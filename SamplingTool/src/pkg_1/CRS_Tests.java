@@ -18,8 +18,7 @@
  *  
  *  
  *  
- *  - Frage: wie findet man den zugehörigen EPSG-Code zu einem CRS, wenn es einen gibt? --> Abschnitt "Matching a CoordinateReferenceSystem" könnte die Lösung sein
- *  - Frage: wie liest man das CRS von einem SHP aus (aus dem zugehörigen .prj file)?
+ *  - Frage: wie findet man den zugehörigen EPSG-Code zu einem CRS, wenn es einen gibt? --> gar nicht; muss man selber machen (manuell zuordnen)
  */
 
 package pkg_1;
@@ -63,7 +62,7 @@ public class CRS_Tests {
 		 * 
 		 *   - CoordinateReferenceSystem can also be defined by a text format 
 		 *    ((called “Well Known Text” or WKT). 
-		 *    This is a standard provided by the OGC and shows up in inside a 
+		 *    This is a standard provided by the OGC and shows up inside a 
 		 *    shapefile “prj” file, or in a databases such as PostGIS and Oracle.
 		 *    To parse WKT please use the CRS.parseWKT( txt ) method
 		 *  

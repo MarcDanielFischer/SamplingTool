@@ -30,7 +30,7 @@ public class LonLat2UTM_Test {
 	
 	
 	public static int long2UTM(double longitude){
-		// TODO Ausnahmen: Norwegen etc. --> also auch abhängig von Latitude --> evtl behandeln
+		// TODO Ausnahmen: Norwegen etc. --> also auch abhängig von Latitude --> evtl behandeln --> start: welche Zonen sind überhaupt irregulär?
 		int utmZone = (int)Math.floor(((longitude + 180) / 6) +1);
 		if(utmZone > 60) utmZone = utmZone % 60; // if input longitude is > 180 for some reason (and output UTM zone is > 60 then)
 		return utmZone;
@@ -103,7 +103,7 @@ public class LonLat2UTM_Test {
 			epsgCode = 32700 + utmZone; // southern hemisphere
 		}
 		
-		// create target CRS
+		// create target CRS from EPSG code
 		String crs = "EPSG:" + epsgCode;
 		CoordinateReferenceSystem targetCRS = CRS.decode(crs);
 		
