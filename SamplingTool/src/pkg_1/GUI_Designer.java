@@ -15,11 +15,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
-import javax.swing.JMenuBar;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.ListModel;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -34,13 +30,11 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 
 
+@SuppressWarnings("serial")
 public class GUI_Designer extends JFrame {
 	
 	// GUI components
 	private JPanel contentPane;
-	private JMenuBar menuBar;
-	private JMenu mnFile;
-	private JMenuItem mntmOpenFile; 
 	private JFileChooser openFileDialog;
 	private JButton btnBrowse;
 	private JButton btnRunSampling; 
@@ -155,28 +149,6 @@ public class GUI_Designer extends JFrame {
 		});
 		btnClose.setBounds(496, 800, 122, 23);
 		contentPane.add(btnClose);
-		
-		// Menu bar
-		menuBar = new JMenuBar();
-		menuBar.setBounds(0, 0, 572, 21);
-		contentPane.add(menuBar);
-		
-		// File menu
-		mnFile = new JMenu("File");
-		menuBar.add(mnFile);
-		
-		// "Open File" menu item
-		mntmOpenFile = new JMenuItem("Open File");
-		mntmOpenFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				openFileDialog = new JFileChooser();
-				if(openFileDialog.showOpenDialog(null) == JFileChooser.APPROVE_OPTION){
-					inputFile = openFileDialog.getSelectedFile();
-					lblSelectedFile.setText(inputFile.toString());
-				}
-			}
-		});
-		mnFile.add(mntmOpenFile);
 		
 		
 		
@@ -666,10 +638,6 @@ public class GUI_Designer extends JFrame {
 	}
 	
 	
-	// Convenience Methods
-	private void repaintFrame(){ // TODO prüfen ob löschbar 
-		repaint(); // Methode repaint() hier gekapselt, damit ich sie aus actionPerformed() im Konstruktor heraus aufruden kann
-	}
 	
 	private void disableSamplingDesignControls(){
 		lblDist_x.setEnabled(false);
