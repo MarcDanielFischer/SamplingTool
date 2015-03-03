@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="lib" path="D:/Daniel/GeoTools/geotools-11.0-bin/gt-swing-11.0.jar" sourcepath="D:/Daniel/GeoTools/geotools-11.0-project/geotools-11.0">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/D:/GeoTools/apidocs/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="D:/Daniel/GeoTools/geotools-11.0-bin/gt-shapefile-11.0.jar" sourcepath="D:/Daniel/GeoTools/geotools-11.0-project/geotools-11.0">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/D:/GeoTools/apidocs/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="D:/Daniel/GeoTools/geotools-11.0-bin/gt-epsg-hsql-11.0.jar" sourcepath="D:/Daniel/GeoTools/geotools-11.0-project/geotools-11.0">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/D:/GeoTools/apidocs/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
