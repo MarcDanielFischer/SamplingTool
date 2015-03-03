@@ -421,7 +421,7 @@ public class GUI_Designer extends JFrame {
 				//----------------------------------------
 
 				// Methode erst hinterher aufrufen mit gesammelten Sachen drin --> Methodensignatur ändern
-				// TODO Methode vl mit weniger Parameter hinbekommen
+				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
 				boolean samplingSuccessful = SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, numStrata, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numClusterSubPlots, distBetweenSubPlots ); 
 				if(samplingSuccessful){
 					JOptionPane.showMessageDialog(null, "output file successfully written");

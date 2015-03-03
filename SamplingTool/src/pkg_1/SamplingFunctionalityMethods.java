@@ -158,7 +158,7 @@ public class SamplingFunctionalityMethods {
 			// filter selected features
 			ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
 			for(int i = 0; i < selectedStrata.length; i++){ // evtl Zeit sparen, indem ich hier optimiert vorgehe
-				for(SimpleFeature feature : allFeatures){
+				for(SimpleFeature feature : allFeatures){ // TODO hier mit while-loop, damit der Schleifendurchlauf abgekürzt wird
 					if(feature.getAttribute(sampleColumn).toString().equals(selectedStrata[i])){
 						selectedFeatures.add(feature);
 					}
