@@ -20,6 +20,7 @@ import org.geotools.data.FileDataStoreFinder;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.simple.SimpleFeatureSource;
+import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.swing.data.JFileDataStoreChooser;
 import org.geotools.referencing.CRS;
@@ -28,8 +29,10 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.geometry.BoundingBox;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.MathTransform;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
@@ -106,27 +109,17 @@ public class SamplingFunctionalityMethods {
 	
 	
 	/**
-	 * Convenience method to convert input data in geographic LonLat projection to UTM projection
-	 * Method: - long2UTM #function to derive UTM zone from longitude coordinate (hat sie selbst geschrieben)
-     * verwendete Formel: (floor((longitude + 180)/6) + 1) %% 60 --> UTM-System verstehen --> nachlesen
-     * - funktioniert wahrscheinlich nicht für alle UTM-Zonen (es gibt diese irregulär geformten Zonen im Norden
-     * --> evtl für Skandinavien relevant)
+	 * Derive UTM Zone for a given longitude value.
+	 * @param longitude
+	 * @return
 	 */
-	public static void lonLat2UTM(){
-		/*
-		 * evtl hilfreiche Code Snippets
-		 * (source: http://gis.stackexchange.com/questions/110249/coordinate-conversion-epsg3857-to-epsg4326-using-opengis-jts-too-slow)
-		 * - org.geotools.referencing.GeodeticCalculator geht anscheinend auch
-		 */
-//		CoordinateReferenceSystem targetCRS = CRS.decode("EPSG:4326");
-//        CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:3857");
-//        MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, false);
-//        GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 3857);
-//        Point minPoint = geometryFactory.createPoint(new Coordinate(xMin, yMin));
-//        Point minTargetPoint = (Point) JTS.transform(minPoint, transform);
-//        Point maxPoint = geometryFactory.createPoint(new Coordinate(xMax, yMax));
-//        PointmaxTargetPoint = (Point) JTS.transform(maxPoint, transform);
+	public static int long2UTM(double longitude){
+		// TODO Ausnahmen: Norwegen etc. --> also auch abhängig von Latitude --> evtl behandeln --> start: welche Zonen sind überhaupt irregulär?
+		int utmZone = (int)Math.floor(((longitude + 180) / 6) +1);
+		if(utmZone > 60) utmZone = utmZone % 60; // if input longitude is > 180 for some reason (and output UTM zone is > 60 then)
+		return utmZone;
 	}
+	
 	
 	/**
 	 * Convenience method to convert processed data in UTM projection to geographic LonLat projection  
@@ -137,25 +130,16 @@ public class SamplingFunctionalityMethods {
 	
 	
 	/**
-	 * entry point: von hier wird weiterverzweigt zu 
-	 * simpleRandomSampling() bzw. systematicSampling()
-	 * --> runSampling() hat ALLE Parameter
+	 * 
 	 */
 	public static boolean runSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, int startX, int startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numClusterSubPlots, int distBetweenSubPlots ){
-		// TODO Methode umstrukturieren: alle output-Zeilen sammeln und dann auf einen Schlag schreiben 
-		// TODO Sampling Methods so umschreiben, dass sie selber intern über mehrere Straten iterieren (for-loop dort und nicht hier)
-		/*
-		 *  gewünschte Struktur hier:
-		 *  1) calls to individual sampling methods (simple random, cluster..)
-		 *  2) save output lines in List or so
-		 *  3) write entire output at once 
-		 */
 		
 		
 		// get all features in the shapefile
 		try {
 			ArrayList<SimpleFeature> allFeatures = getFeatures(inputFile); // dieser SChritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
-			// filter selected features
+		
+		// filter selected features
 			ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
 			for(int i = 0; i < selectedStrata.length; i++){ // evtl Zeit sparen, indem ich hier optimiert vorgehe
 				for(SimpleFeature feature : allFeatures){ // TODO hier mit while-loop, damit der Schleifendurchlauf abgekürzt wird
@@ -164,40 +148,103 @@ public class SamplingFunctionalityMethods {
 					}
 				}
 			}
-			/*
-			 *  convert features to UTM (only necessary if SHP not in metric system --> check)
-			 *  - this is only needed for cluster and systematic sampling, not for SRS
-			 */
-			// if(SHP not already in metric projection so that we can calculate distances directly):
+			
+			
+		// convert to UTM
+			// read SHP CRS (sourceCRS)
+			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); 
+			
+			
+			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here)
+			// and add converted Geometries to ArrayList
+			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS
+			ArrayList<Geometry> strataUTM= new ArrayList<Geometry>();
 			for(SimpleFeature feature : selectedFeatures){
-				// Katja: 
-				// determine which UTM Zone a stratum lies in 
-				   //  BBOX --> lonMin, lonMax // --> wie geht das mit GeoTools?
-				   //  derive UTM zones for lonMin, lonMax (only lon values relevant for UTM zones (except exceptions))
-
-				// reproject Stratum to specified UTM Zone
-				   // spTransform(feature, targetCRS)
-				
-				
-				//-----------------------------
-				// --> wie geht das mit GeoTools?
-				// UTM Zone 32N (Deutschland): EPSG code 32632
-				// GeometryCRS lab
-				// class Mathtransform...
-				
-				
-//              // Bsp aus GeoTools Documentation:  
-//				CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:4326");
-//				CoordinateReferenceSystem targetCRS = CRS.decode("EPSG:23032");
-//				MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true);
-				
-//				// So kommt man an das aktuelle CRS der verwendeten Daten heran:
-//				SimpleFeatureType schema = featureSource.getSchema();
-//				CoordinateReferenceSystem dataCRS = schema.getCoordinateReferenceSystem();
-				
-				
+				CoordinateReferenceSystem targetCRS = getTargetCRS(feature); // targetCRS:in UTM projection
+				// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
+				MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
+				// get feature Geometry
+				Geometry sourceGeometry = (Geometry) feature.getAttribute( "the_geom" );
+				// convert Geometry to target CRS
+				Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
+				strataUTM.add(targetGeometry);
 				
 			}
+			
+			
+			
+			// iterate over converted Geometries and sample plots according to input params
+			for(Geometry stratum : strataUTM){
+				// sample plots
+			}
+			
+			// muss man diese if-Verzweigungen IN den for loop reinschreiben oder kann man das irgendwie trennen?
+			// --> ich könnte den jeweiligen Fach-Sample-Methoden einfach die ganzen ArrayList übergeben und die loopen dann 
+			
+			
+			// hier die Samplinglogik
+			// simple random sample
+			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
+				// 1)simple random sample, no cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+					//  output_plots <- SRS(strata_utm, number_of_plots[l])
+					// TODO hier weitermachen
+					
+				}
+				// 2)simple random sample with cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+					// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
+					
+					// Second, make a cluster out of each cluster center point
+					if(clusterShape == GUI_Designer.I_SHAPE){
+						// output_plots <- I_plots(cluster_coord, plot_dist[l], cluster_nrplots[l])
+					}
+					if(clusterShape == GUI_Designer.L_SHAPE){
+
+					}
+					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+
+					}
+					if(clusterShape == GUI_Designer.H_SHAPE){
+
+					}
+				}
+			}
+			
+			// systematic sampling
+			if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
+				
+				// random or specified starting point?
+				if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
+
+				}
+				if(startingPoint == GUI_Designer.STARTING_POINT_SPECIFIED){
+
+				}
+				
+				// 3) systematic sample , no cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+					
+				}
+				// 4) systematic sample with cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+					if(clusterShape == GUI_Designer.I_SHAPE){
+						// output_plots <- I_plots(cluster_coord, plot_dist[l], cluster_nrplots[l])
+					}
+					if(clusterShape == GUI_Designer.L_SHAPE){
+
+					}
+					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+
+					}
+					if(clusterShape == GUI_Designer.H_SHAPE){
+
+					}
+				}
+			}
+		
+			
+			
 			
 			
 			
@@ -224,57 +271,107 @@ public class SamplingFunctionalityMethods {
 		
 		
 		
-		// SRS hard-wired --> funktioniert
-		try{
-			File outputFile = getFile(); // creates output file and writes header line into it
-			// loop over polygons and call sampling method for each of them
-			for(int i = 0; i < numStrata; i++){
-				Point[] outputPlots = simpleRandomSampling(inputFile, sampleColumn, selectedStrata[i], numPlotsToBeSampled[i]);
-				// write plots to file in each iteration:
-				writeOutput(outputFile, outputPlots, selectedStrata[i]);
-			}
-			return true;
-		}catch(Exception e){
-			JOptionPane.showMessageDialog(null, e.toString());
-		}
-		
-		
-		
-		
-		
-//      // eigener Versuch
-//		// suboptimale Struktur
+//		// SRS hard-wired --> funktioniert
 //		try{
-//			// first create output file and writes header line into it --> move to one single location insted of "distributed writing"
-//			File outputFile = getFile(); 
-//			Point[] outputPlots;
-//			// delegate to appropriate sampling Method
-//			
-//			// Simple Random Sampling
-//			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
-//				// call simpleRandomSampling() multiple times (one for each selected stratum) 
-//				// TODO for loop von hier wegbewegen: simpleRandomSampling() soll selbstständig über mehrere Straten iterieren und jeweils das Stratum mit dazu schreiben
-//				for(int i = 0; i < numStrata; i++){
-//					outputPlots = simpleRandomSampling(inputFile, sampleColumn, selectedPolygons[i], numPlotsToBeSampled[i]);
-//					// write plots to file in each iteration:
-//					writeOutput(outputFile, outputPlots, selectedPolygons[i]);
-//				}
+//			File outputFile = getFile(); // creates output file and writes header line into it
+//			// loop over polygons and call sampling method for each of them
+//			for(int i = 0; i < numStrata; i++){
+//				Point[] outputPlots = simpleRandomSampling(inputFile, sampleColumn, selectedStrata[i], numPlotsToBeSampled[i]);
+//				// write plots to file in each iteration:
+//				writeOutput(outputFile, outputPlots, selectedStrata[i]);
 //			}
-//			
-//			if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-//				clusterSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedPolygons, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, int startX, int startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numClusterSubPlots, int distBetweenSubPlots);
-//			}
-//
-//
 //			return true;
 //		}catch(Exception e){
 //			JOptionPane.showMessageDialog(null, e.toString());
 //		}
 		
+		
+		
+		
+		
 		return false;
 	}
 	
 	
+	
+	/**
+	 * Gets a matching UTM CoordinateReferenceSystem for the input SimpleFeature.
+	 * If the feature spans more than one UTM zone, the formula (zoneMin + zoneMax) / 2 is used.
+	 * Behaviour for cross-equator-features is not tested yet. 
+	 * @param feature
+	 * @return
+	 */
+	private static CoordinateReferenceSystem getTargetCRS(SimpleFeature feature) throws Exception{
+		// find matching UTM zone for feature (UTM zones depend mainly on Longitude values)
+		BoundingBox boundingBox = feature.getBounds();
+		double lonMin = boundingBox.getMinX();
+		double lonMax = boundingBox.getMaxX();
+		
+		int zoneMin = long2UTM(lonMin);
+		int zoneMax = long2UTM(lonMax);
+		int utmZone = (int)Math.floor((zoneMin + zoneMax) / 2); // for when the feature spans more than one UTM zone
+		/*
+		 *  von Katja übernommen, ist Konventionssache: 
+		 *  wenn ein stratum sich über mehrere UTM-Zonen erstreckt, 
+		 *  wird die mittlere UTM-Zone für das gesamt Stratum ausgewählt (bei ungerader Anzahl von UTM-Zonen) 
+		 *  bzw. abgerundet bei gerade Anzahl von UTM-Zonen (man könnte zb auch aufrunden)
+		 *  --> gibts auch metrische CRS für größere Ausdehnungen (UTM-Zonen sind immer nur 6 Grad breit)??
+		 */
+		
+		
+		// derive EPSG code for UTM Zone:
+		//  UTM                    EPSG
+		//  01 N                   32601
+		//  02 N                   32602
+		//  60 N                   32660
+		// EPSG codes for UTM zones 1-60 N : 32601 - 32660 (all for WGS84 Datum, there are others, too)
+		// EPSG codes for UTM zones 1-60 S : 32701 - 32760 (all for WGS84 Datum, there are others, too)
+		// --> Formel: if(northernHemisphere) EPSG = 32600 + utmZone
+		// if(southernHemisphere) EPSG = 32700 + utmZone
+		// bei Hemisphärenüberschreitenden features: Lat-Mittelwert ((latMin + latMax) / 2) versuchen,
+		// könnte unerwartetes Verhalten verursachen bei evtl. negativen Hochwerten 
+		// (wenn latMean auf Nordhalbkugel liegt und sich ein feature auch auf die Südhalbkugel erstreckt)
+		// --> Testen
+		// (dann evtl mit UTM-Südzonen probieren, die haben false northing, da gibts keine negativen Werte)
+		
+		double latMin = boundingBox.getMinY();
+		double latMax = boundingBox.getMaxY();
+		double latMean = (latMin + latMax)/2;
+		
+		/*
+		 * The EPSG Code ist determined depending on whether
+		 * the mean latitude value is on the northern or the southern hemisphere
+		 * (mean latitude value: just the mean between min and max latitude values of the feature 
+		 * bounding box; the fact which hemisphere the biggest area proportion 
+		 * of the feature is located on is not taken into account here)
+		 */
+		int epsgCode;
+		if(latMean > 0){ 
+			epsgCode = 32600 + utmZone; // northern hemisphere
+		}else{ 
+			epsgCode = 32700 + utmZone; // southern hemisphere
+		}
+		
+		// create target CRS from EPSG code
+		String crs = "EPSG:" + epsgCode;
+		CoordinateReferenceSystem targetCRS = CRS.decode(crs);
+		return targetCRS;
+	}
+	
+	
+
+	/**
+	 * Convenience method to get the CoordinateReferenceSystem of an input SHP.
+	 * @param inputFile
+	 * @return the CRS of the input file
+	 * @throws Exception
+	 */
+	private static CoordinateReferenceSystem getCRS(File inputFile) throws Exception{
+		FileDataStore dataStore = FileDataStoreFinder.getDataStore(inputFile);
+		CoordinateReferenceSystem crs = dataStore.getSchema().getCoordinateReferenceSystem();
+		return crs;
+	}
+
 	public static void writeOutput(File file, Point[] samplePlots, String selectedPolygon) throws Exception{
 		// Problem hier: für jede iteration wird das file ganz überschrieben
 		// --> ich will append, nicht overwrite
