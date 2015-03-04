@@ -32,6 +32,7 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.MultiPolygon;
@@ -124,13 +125,25 @@ public class SamplingFunctionalityMethods {
 	/**
 	 * Convenience method to convert processed data in UTM projection to geographic LonLat projection  
 	 */
-	public static void UTM2LonLat(){
+	public static void UTM2LonLat(ArrayList<Point> plots) throws Exception{
+		
+		// iterate over plots and convert them
+		for(int i = 0; i < plots.size(); i++){
+			Point currentPlot = plots.get(i);
+			int srid = currentPlot.getSRID(); // TODO check for srid to be set (must not be 0)
+			CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:" + srid);
+			Point plotLatLon = (Point)JTS.toGeographic(currentPlot, sourceCRS);
+			plots.set(i, plotLatLon); // replace elements in ArrayList instead of writing them to a new one in order to save memory
+			
+		}
 
 	}
 	
 	
 	/**
-	 * 
+	 * This method is responsible for the entire Sampling process.
+	 * It takes the sampling params from the GUI, implements the sampling logic
+	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
 	public static boolean runSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, int startX, int startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numClusterSubPlots, int distBetweenSubPlots ){
 		
@@ -152,13 +165,14 @@ public class SamplingFunctionalityMethods {
 			
 		// convert to UTM
 			// read SHP CRS (sourceCRS)
-			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); 
+			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
 			
 			
 			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here)
 			// and add converted Geometries to ArrayList
 			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS
 			ArrayList<Geometry> strataUTM= new ArrayList<Geometry>();
+			
 			for(SimpleFeature feature : selectedFeatures){
 				CoordinateReferenceSystem targetCRS = getTargetCRS(feature); // targetCRS:in UTM projection
 				// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
@@ -167,130 +181,119 @@ public class SamplingFunctionalityMethods {
 				Geometry sourceGeometry = (Geometry) feature.getAttribute( "the_geom" );
 				// convert Geometry to target CRS
 				Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
+				
+				// add CRS info to targetGeometry so that the points can have it, too, and then they can be 
+				// reprojected from UTM to LatLon which they could not i
+				int srid = CRS.lookupEpsgCode(targetCRS, true);
+				targetGeometry.setSRID(srid);
+				// add stratum name to targetGeometry so that we can retrieve that name easily when it comes to writing output data
+				targetGeometry.setUserData(feature.getAttribute(sampleColumn));
 				strataUTM.add(targetGeometry);
 				
 			}
 			
 			
+			// create ArrayList to store and append output plots (ArrayList is a more convenient type to append data to than a regular array)
+			ArrayList<Point> outputPlots = new ArrayList<Point>();
 			
 			// iterate over converted Geometries and sample plots according to input params
-			for(Geometry stratum : strataUTM){
+			for(int i = 0; i < strataUTM.size(); i++){
 				// sample plots
+
+
+				// muss man diese if-Verzweigungen IN den for loop reinschreiben oder kann man das irgendwie trennen?
+				// --> ich könnte erst die Samplingart bestimmen und dann
+				// den jeweiligen Fach-Sample-Methoden einfach die ganze ArrayList übergeben und die loopen dann 
+				// --> aber wie ist das, wenn die Straten unterschiedliche CRS haben? dann müsste eine MEthode über mehrere Straten mit versch.
+				// CRS iterieren und in jedes auf unterschiedlich Weise Punkte hineinsampeln
+
+
+				// hier die Samplinglogik
+				// simple random sample
+				if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
+					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+						// 1)simple random sample, no cluster plots
+						ArrayList<Point> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+						outputPlots.addAll(simpleRandomPlots);
+
+					}
+					// 2)simple random sample with cluster plots
+					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+						// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
+
+						// Second, make a cluster out of each cluster center point
+						if(clusterShape == GUI_Designer.I_SHAPE){
+							// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
+						}
+						if(clusterShape == GUI_Designer.L_SHAPE){
+
+						}
+						if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+
+						}
+						if(clusterShape == GUI_Designer.H_SHAPE){
+
+						}
+					}
+				}
+
+				// systematic sampling
+				if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
+
+					// random or specified starting point?
+					if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
+
+					}
+					if(startingPoint == GUI_Designer.STARTING_POINT_SPECIFIED){
+
+					}
+
+					// 3) systematic sample , no cluster plots
+					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+
+					}
+					// 4) systematic sample with cluster plots
+					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+						if(clusterShape == GUI_Designer.I_SHAPE){
+							// output_plots <- I_plots(cluster_coord, plot_dist[l], cluster_nrplots[l])
+						}
+						if(clusterShape == GUI_Designer.L_SHAPE){
+
+						}
+						if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+
+						}
+						if(clusterShape == GUI_Designer.H_SHAPE){
+
+						}
+					}
+				}
+
 			}
 			
-			// muss man diese if-Verzweigungen IN den for loop reinschreiben oder kann man das irgendwie trennen?
-			// --> ich könnte den jeweiligen Fach-Sample-Methoden einfach die ganzen ArrayList übergeben und die loopen dann 
 			
+			// reproject output plots to LatLon
+			UTM2LonLat(outputPlots);
 			
-			// hier die Samplinglogik
-			// simple random sample
-			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
-				// 1)simple random sample, no cluster plots
-				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
-					//  output_plots <- SRS(strata_utm, number_of_plots[l])
-					// TODO hier weitermachen
-					
-				}
-				// 2)simple random sample with cluster plots
-				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-					// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
-					
-					// Second, make a cluster out of each cluster center point
-					if(clusterShape == GUI_Designer.I_SHAPE){
-						// output_plots <- I_plots(cluster_coord, plot_dist[l], cluster_nrplots[l])
-					}
-					if(clusterShape == GUI_Designer.L_SHAPE){
-
-					}
-					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-
-					}
-					if(clusterShape == GUI_Designer.H_SHAPE){
-
-					}
-				}
-			}
+			// write output to file
+			File outputFile = getFile();
+			writeOutput(outputFile, outputPlots);
 			
-			// systematic sampling
-			if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
-				
-				// random or specified starting point?
-				if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
-
-				}
-				if(startingPoint == GUI_Designer.STARTING_POINT_SPECIFIED){
-
-				}
-				
-				// 3) systematic sample , no cluster plots
-				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
-					
-				}
-				// 4) systematic sample with cluster plots
-				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-					if(clusterShape == GUI_Designer.I_SHAPE){
-						// output_plots <- I_plots(cluster_coord, plot_dist[l], cluster_nrplots[l])
-					}
-					if(clusterShape == GUI_Designer.L_SHAPE){
-
-					}
-					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-
-					}
-					if(clusterShape == GUI_Designer.H_SHAPE){
-
-					}
-				}
-			}
-		
+			// if everything went well...
+			return true;
 			
-			
-			
-			
-			
-			
-			
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		
-		//----------------------------------------------------------------------------------------
-		// ich übernehme jetzt Katjas Struktur, alles andere ist mir gerade zu schwierig
-//		for(strata_utm in strata_utm_list){
-//			
-//		}
 		
-		
-		//----------------------------------------------------------------------------------------
-		
-		
-		
-		
-		
-		
-		
-		
-//		// SRS hard-wired --> funktioniert
-//		try{
-//			File outputFile = getFile(); // creates output file and writes header line into it
-//			// loop over polygons and call sampling method for each of them
-//			for(int i = 0; i < numStrata; i++){
-//				Point[] outputPlots = simpleRandomSampling(inputFile, sampleColumn, selectedStrata[i], numPlotsToBeSampled[i]);
-//				// write plots to file in each iteration:
-//				writeOutput(outputFile, outputPlots, selectedStrata[i]);
-//			}
-//			return true;
-//		}catch(Exception e){
-//			JOptionPane.showMessageDialog(null, e.toString());
-//		}
-		
-		
-		
-		
-		
+		// if things went not so well (this statement is never reached if everything works fine)
 		return false;
 	}
+	
+	
+	
+	
 	
 	
 	
@@ -372,25 +375,52 @@ public class SamplingFunctionalityMethods {
 		return crs;
 	}
 
-	public static void writeOutput(File file, Point[] samplePlots, String selectedPolygon) throws Exception{
-		// Problem hier: für jede iteration wird das file ganz überschrieben
-		// --> ich will append, nicht overwrite
-		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
-
-		FileWriter fileWriter = new FileWriter(file, true);
-		for(int j = 0; j <= samplePlots.length -1; j++){
-			double x = samplePlots[j].getCoordinate().x;
-			double y = samplePlots[j].getCoordinate().y;
-			fileWriter.write(Double.toString(x) + ",");
-			fileWriter.write(Double.toString(y) + ",");
-			fileWriter.write((j+1) + ","); // "Plot_nr" derived from samplePlots-array index position 
-			fileWriter.write(selectedPolygon + "\n");
-		}
-		fileWriter.close();
-}
-	
 
 	/**
+	 * new Version, use this one
+	 * @param stratum
+	 * @param numPlots
+	 * @return
+	 */
+	public static ArrayList<Point> simpleRandomSampling(Geometry stratum, int numPlots){
+		// initialize output ArrayList
+		ArrayList<Point> output = new ArrayList<Point>();
+		
+		// BBOX, min/max values --> aber das ist doch doof, dann benutze ich an 2 Stellen BBOX (umständlich), einmal bei CRS-Konversion und hier --> kann man das vermeiden?
+		Envelope envelope = stratum.getEnvelopeInternal();
+		double minX = envelope.getMinX();
+		double maxX = envelope.getMaxX();
+		double minY = envelope.getMinY();
+		double maxY = envelope.getMaxY();
+		
+		// sample Plots within bbox
+		while(output.size() < numPlots){
+			// generate random X
+			double X = (Math.random() * (maxX - minX)) + minX;
+			// generate random Y
+			double Y = (Math.random() * (maxY - minY)) + minY;
+			// generate a point from X, Y values created above
+			GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+			Coordinate coord = new Coordinate( X, Y );
+			Point point = geometryFactory.createPoint( coord );
+			// add two values to the point that are not automatically copied from stratum
+			point.setSRID(stratum.getSRID()); // point needs srid property so it can be reprojected to LatLon later on 
+			point.setUserData(stratum.getUserData()); // we want to add the stratum name to the point so that we can write it to output file later on
+
+			// check if Point inside stratum (not just within bbox) and add to output ArrayList
+			if(point.within(stratum)){
+				output.add(point);
+			}
+		}
+		
+		// return ArrayList
+		return output;
+	}
+	
+	
+	/**
+	 * DEPRECATED, use overload method instead
+	 * 
 	 * Simple Random Sampling umsetzen
 	 * Was brauche ich hier?
 	 * - Zugriff auf einzelne Polygone
@@ -569,6 +599,53 @@ public class SamplingFunctionalityMethods {
 	}
 	
 	
+	public static void writeOutput(File file, ArrayList<Point> samplePlots) throws Exception{
+		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
+
+		FileWriter fileWriter = new FileWriter(file, true); // second param is for appending to file (Yes/No)
+		
+		// the following two lines are needed to derive appropriate index numbers for the plots
+		String plotStratumName = null;
+		int j = 0;
+		
+		// iterate over ArrayList and write Point values to output file
+		for(int i = 0; i < samplePlots.size(); i++){
+			Point currentPlot = samplePlots.get(i);
+			double x = currentPlot.getCoordinate().x;
+			double y = currentPlot.getCoordinate().y;
+			fileWriter.write(Double.toString(x) + ",");
+			fileWriter.write(Double.toString(y) + ",");
+			// the following if-else block is to derive the plot index number for the output file (index starts at one for each stratum)
+			if (plotStratumName == (String)currentPlot.getUserData()){ // if plotStratumName is same as for the plot before, then continue increasing index j
+				j++;				
+			}else{
+				plotStratumName = (String)currentPlot.getUserData(); // if plotStratumName has changed, then reset index j to 1
+				j = 1;
+			}
+			fileWriter.write((j) + ","); // "Plot_nr" derived from samplePlots-ArrayList index position 
+			fileWriter.write((String)currentPlot.getUserData() + "\n"); // der Polygonname fehlt jetzt noch
+		}
+		fileWriter.close();
+}
+	
+	
+	
+	public static void writeOutput(File file, Point[] samplePlots, String selectedPolygon) throws Exception{
+		// Problem hier: für jede iteration wird das file ganz überschrieben
+		// --> ich will append, nicht overwrite
+		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
+
+		FileWriter fileWriter = new FileWriter(file, true);
+		for(int j = 0; j <= samplePlots.length -1; j++){
+			double x = samplePlots[j].getCoordinate().x;
+			double y = samplePlots[j].getCoordinate().y;
+			fileWriter.write(Double.toString(x) + ",");
+			fileWriter.write(Double.toString(y) + ",");
+			fileWriter.write((j+1) + ","); // "Plot_nr" derived from samplePlots-array index position 
+			fileWriter.write(selectedPolygon + "\n");
+		}
+		fileWriter.close();
+}
 	
 	/**
 	 * TODO OBSOLET (?)
