@@ -164,13 +164,13 @@ public class SamplingFunctionalityMethods {
 			
 			
 		// convert to UTM
-			// read SHP CRS (sourceCRS)
+			// read input SHP CRS (sourceCRS)
 			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
 			
 			
 			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here)
 			// and add converted Geometries to ArrayList
-			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS
+			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS (different UTM zones) according to its position
 			ArrayList<Geometry> strataUTM= new ArrayList<Geometry>();
 			
 			for(SimpleFeature feature : selectedFeatures){
@@ -182,8 +182,8 @@ public class SamplingFunctionalityMethods {
 				// convert Geometry to target CRS
 				Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
 				
-				// add CRS info to targetGeometry so that the points can have it, too, and then they can be 
-				// reprojected from UTM to LatLon which they could not i
+				// add CRS info to targetGeometry so that the Sample plots will each have an associated CRS, too, so that they can be 
+				// reprojected from UTM to LatLon which they could not if they lacked CRS information
 				int srid = CRS.lookupEpsgCode(targetCRS, true);
 				targetGeometry.setSRID(srid);
 				// add stratum name to targetGeometry so that we can retrieve that name easily when it comes to writing output data
@@ -220,10 +220,12 @@ public class SamplingFunctionalityMethods {
 					// 2)simple random sample with cluster plots
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 						// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
-
+						ArrayList<Point> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
 						// Second, make a cluster out of each cluster center point
 						if(clusterShape == GUI_Designer.I_SHAPE){
 							// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
+							ArrayList<Point> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							outputPlots.addAll(i_Plots);
 						}
 						if(clusterShape == GUI_Designer.L_SHAPE){
 
@@ -539,8 +541,48 @@ public class SamplingFunctionalityMethods {
 		// Weiterverzweigung zu den verschiedenen Clusterformen (I,L,H,Square)
 	}
 	
-	public static void create_I_clusters(){
+	
+	/**
+	 * Grow i-shaped clusters from given seed points with a total of numClusterSubPlots Plots in each cluster and distBetweenSubPlots distance between them (distance in Meters).
+	 * @param clusterSeedPoints
+	 * @param distBetweenSubPlots
+	 * @param numClusterSubPlots
+	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
+	 */
+	public static ArrayList<Point> create_I_clusters(ArrayList<Point> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Geometry stratum){
+		
+		ArrayList<Point> outputPlots = new ArrayList<Point>();
+		
+		// iterate over seed points
+		for(Point seedPoint : clusterSeedPoints){
+			// add each seed point to output
+			outputPlots.add(seedPoint);
+			
+			double x = seedPoint.getCoordinate().x;
+			double y = seedPoint.getCoordinate().y;
+			
+			// create additional points until reaching the specified total number of plots per cluster
+			for(int i = 0; i < numClusterSubPlots - 1; i++){
+				
+				y += distBetweenSubPlots; // build i-clusters along North-South axis				
+				
+				GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+				Coordinate coord = new Coordinate( x, y );
+				Point point = geometryFactory.createPoint( coord );
+				// add two values to the point that are not automatically copied from stratum
+				point.setSRID(stratum.getSRID()); // point needs srid property so it can be reprojected to LatLon later on 
+				point.setUserData(stratum.getUserData()); // we want to add the stratum name to the point so that we can write it to output file later on
 
+				// check if Point inside stratum (not just within bbox) and add to output ArrayList
+				if(point.within(stratum)){
+					outputPlots.add(point);
+				}
+				// TODO problem: what if one of the cluster-subplots is outside the stratum? Drop entire cluster or just leave that one point out? --> now it´s just the one point
+				// TODO how can i give the clusters numbers?
+				
+			}
+		}
+		return outputPlots;
 	}
 	
 	public static void create_L_clusters(){
