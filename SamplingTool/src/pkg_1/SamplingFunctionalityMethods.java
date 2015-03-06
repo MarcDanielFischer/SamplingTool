@@ -29,6 +29,7 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.geometry.BoundingBox;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.crs.GeographicCRS;
 import org.opengis.referencing.operation.MathTransform;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -123,17 +124,27 @@ public class SamplingFunctionalityMethods {
 	
 	
 	/**
-	 * Convenience method to convert processed data in UTM projection to geographic LonLat projection  
+	 * Convenience method to convert processed data from UTM projection to geographic LonLat projection  
 	 */
-	public static void UTM2LonLat(ArrayList<Point> plots) throws Exception{
+	public static void UTM2LonLat(ArrayList<Plot> plots) throws Exception{
 		
-		// iterate over plots and convert them
-		for(int i = 0; i < plots.size(); i++){
-			Point currentPlot = plots.get(i);
-			int srid = currentPlot.getSRID(); // TODO check for srid to be set (must not be 0)
-			CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:" + srid);
-			Point plotLatLon = (Point)JTS.toGeographic(currentPlot, sourceCRS);
-			plots.set(i, plotLatLon); // replace elements in ArrayList instead of writing them to a new one in order to save memory
+		// iterate over plots and convert their Point property to geographic LonLat
+		for(Plot plot : plots){
+			
+			// get the plot's current CRS 
+			CoordinateReferenceSystem sourceCRS = plot.getCRS();
+			
+			// get Point property (UTM projection at this stage)
+			Point plotPoint = plot.getPoint();
+			
+			// convert Point property to LonLat
+			Point plotLatLon = (Point)JTS.toGeographic(plotPoint, sourceCRS);
+			
+			// save changed Point property
+			plot.setPoint(plotLatLon);
+			
+			// change plot's CRS property (just to work properly, this property should not be needed any more at this stage of the process)
+			plot.setCRS(org.geotools.referencing.crs.DefaultGeographicCRS.WGS84);
 			
 		}
 
@@ -171,7 +182,7 @@ public class SamplingFunctionalityMethods {
 			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here)
 			// and add converted Geometries to ArrayList
 			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS (different UTM zones) according to its position
-			ArrayList<Geometry> strataUTM= new ArrayList<Geometry>();
+			ArrayList<Stratum> strataUTM= new ArrayList<Stratum>();
 			
 			for(SimpleFeature feature : selectedFeatures){
 				CoordinateReferenceSystem targetCRS = getTargetCRS(feature); // targetCRS:in UTM projection
@@ -182,19 +193,18 @@ public class SamplingFunctionalityMethods {
 				// convert Geometry to target CRS
 				Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
 				
-				// add CRS info to targetGeometry so that the Sample plots will each have an associated CRS, too, so that they can be 
-				// reprojected from UTM to LatLon which they could not if they lacked CRS information
-				int srid = CRS.lookupEpsgCode(targetCRS, true);
-				targetGeometry.setSRID(srid);
-				// add stratum name to targetGeometry so that we can retrieve that name easily when it comes to writing output data
-				targetGeometry.setUserData(feature.getAttribute(sampleColumn));
-				strataUTM.add(targetGeometry);
+				
+				// make a Stratum object out of the targetGeometry that holds additional information (CRS, stratumName )
+				Stratum stratum = new Stratum(targetGeometry, targetCRS, (String)feature.getAttribute(sampleColumn));
+				strataUTM.add(stratum);
+				
+
 				
 			}
 			
 			
 			// create ArrayList to store and append output plots (ArrayList is a more convenient type to append data to than a regular array)
-			ArrayList<Point> outputPlots = new ArrayList<Point>();
+			ArrayList<Plot> outputPlots = new ArrayList<Plot>();
 			
 			// iterate over converted Geometries and sample plots according to input params
 			for(int i = 0; i < strataUTM.size(); i++){
@@ -213,18 +223,18 @@ public class SamplingFunctionalityMethods {
 				if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
 						// 1)simple random sample, no cluster plots
-						ArrayList<Point> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+						ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
 						outputPlots.addAll(simpleRandomPlots);
 
 					}
 					// 2)simple random sample with cluster plots
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 						// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
-						ArrayList<Point> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+						ArrayList<Plot> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
 						// Second, make a cluster out of each cluster center point
 						if(clusterShape == GUI_Designer.I_SHAPE){
 							// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
-							ArrayList<Point> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							ArrayList<Plot> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
 							outputPlots.addAll(i_Plots);
 						}
 						if(clusterShape == GUI_Designer.L_SHAPE){
@@ -384,18 +394,21 @@ public class SamplingFunctionalityMethods {
 	 * @param numPlots
 	 * @return
 	 */
-	public static ArrayList<Point> simpleRandomSampling(Geometry stratum, int numPlots){
+	public static ArrayList<Plot> simpleRandomSampling(Stratum stratum, int numPlots){
 		// initialize output ArrayList
-		ArrayList<Point> output = new ArrayList<Point>();
+		ArrayList<Plot> output = new ArrayList<Plot>();
 		
 		// BBOX, min/max values --> aber das ist doch doof, dann benutze ich an 2 Stellen BBOX (umständlich), einmal bei CRS-Konversion und hier --> kann man das vermeiden?
-		Envelope envelope = stratum.getEnvelopeInternal();
+		Geometry stratumGeometry = stratum.getGeometry();
+		Envelope envelope = stratumGeometry.getEnvelopeInternal();
 		double minX = envelope.getMinX();
 		double maxX = envelope.getMaxX();
 		double minY = envelope.getMinY();
 		double maxY = envelope.getMaxY();
 		
-		// sample Plots within bbox
+		int plotNr = 1; // initialize outside while loop and increase only if plot added
+		
+		// randomly create Point objects within bbox
 		while(output.size() < numPlots){
 			// generate random X
 			double X = (Math.random() * (maxX - minX)) + minX;
@@ -405,13 +418,14 @@ public class SamplingFunctionalityMethods {
 			GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
 			Coordinate coord = new Coordinate( X, Y );
 			Point point = geometryFactory.createPoint( coord );
-			// add two values to the point that are not automatically copied from stratum
-			point.setSRID(stratum.getSRID()); // point needs srid property so it can be reprojected to LatLon later on 
-			point.setUserData(stratum.getUserData()); // we want to add the stratum name to the point so that we can write it to output file later on
+			
 
-			// check if Point inside stratum (not just within bbox) and add to output ArrayList
-			if(point.within(stratum)){
-				output.add(point);
+			// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
+			if(point.within(stratumGeometry)){
+				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), plotNr);
+				output.add(plot);
+				plotNr ++; // increase plotNr only after successfully adding new Plot to output (eg, when randomly generated point falls inside BBOX)
 			}
 		}
 		
@@ -549,17 +563,17 @@ public class SamplingFunctionalityMethods {
 	 * @param numClusterSubPlots
 	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
 	 */
-	public static ArrayList<Point> create_I_clusters(ArrayList<Point> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Geometry stratum){
+	public static ArrayList<Plot> create_I_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
 		
-		ArrayList<Point> outputPlots = new ArrayList<Point>();
+		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
 		
 		// iterate over seed points
-		for(Point seedPoint : clusterSeedPoints){
+		for(Plot seedPoint : clusterSeedPoints){
 			// add each seed point to output
 			outputPlots.add(seedPoint);
 			
-			double x = seedPoint.getCoordinate().x;
-			double y = seedPoint.getCoordinate().y;
+			double x = seedPoint.getPoint().getCoordinate().x;
+			double y = seedPoint.getPoint().getCoordinate().y;
 			
 			// create additional points until reaching the specified total number of plots per cluster
 			for(int i = 0; i < numClusterSubPlots - 1; i++){
@@ -569,14 +583,15 @@ public class SamplingFunctionalityMethods {
 				GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
 				Coordinate coord = new Coordinate( x, y );
 				Point point = geometryFactory.createPoint( coord );
-				// add two values to the point that are not automatically copied from stratum
-				point.setSRID(stratum.getSRID()); // point needs srid property so it can be reprojected to LatLon later on 
-				point.setUserData(stratum.getUserData()); // we want to add the stratum name to the point so that we can write it to output file later on
 
-				// check if Point inside stratum (not just within bbox) and add to output ArrayList
-				if(point.within(stratum)){
-					outputPlots.add(point);
+				// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
+				if(point.within(stratum.getGeometry())){
+					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS());
+					outputPlots.add(plot);
 				}
+				
+				
 				// TODO problem: what if one of the cluster-subplots is outside the stratum? Drop entire cluster or just leave that one point out? --> now it´s just the one point
 				// TODO how can i give the clusters numbers?
 				
@@ -641,33 +656,56 @@ public class SamplingFunctionalityMethods {
 	}
 	
 	
-	public static void writeOutput(File file, ArrayList<Point> samplePlots) throws Exception{
+	public static void writeOutput(File file, ArrayList<Plot> samplePlots) throws Exception{
 		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
 
 		FileWriter fileWriter = new FileWriter(file, true); // second param is for appending to file (Yes/No)
 		
-		// the following two lines are needed to derive appropriate index numbers for the plots
-		String plotStratumName = null;
-		int j = 0;
 		
-		// iterate over ArrayList and write Point values to output file
-		for(int i = 0; i < samplePlots.size(); i++){
-			Point currentPlot = samplePlots.get(i);
-			double x = currentPlot.getCoordinate().x;
-			double y = currentPlot.getCoordinate().y;
+		
+		for(Plot plot : samplePlots){
+			
+			
+			double x = plot.getPoint().getCoordinate().x;
+			double y = plot.getPoint().getCoordinate().y;
 			fileWriter.write(Double.toString(x) + ",");
 			fileWriter.write(Double.toString(y) + ",");
-			// the following if-else block is to derive the plot index number for the output file (index starts at one for each stratum)
-			if (plotStratumName == (String)currentPlot.getUserData()){ // if plotStratumName is same as for the plot before, then continue increasing index j
-				j++;				
-			}else{
-				plotStratumName = (String)currentPlot.getUserData(); // if plotStratumName has changed, then reset index j to 1
-				j = 1;
-			}
-			fileWriter.write((j) + ","); // "Plot_nr" derived from samplePlots-ArrayList index position 
-			fileWriter.write((String)currentPlot.getUserData() + "\n"); // der Polygonname fehlt jetzt noch
+			// TODO warum schreibt er die Zahlen nicht gescheit???
+//			int clusterNr = plot.getClusterNr();
+//			fileWriter.write(clusterNr);
+			fileWriter.write(plot.getPlotNr());
+			int k = 5;
+			fileWriter.write((String)Integer.toString(k) + ",");
+			fileWriter.write(plot.getStratumName() + "\n");
+			
+			
 		}
+		
 		fileWriter.close();
+		
+		
+//		// the following two lines are needed to derive appropriate index numbers for the plots
+//		String plotStratumName = null;
+//		int j = 0;
+//		
+//		// iterate over ArrayList and write Point values to output file
+//		for(int i = 0; i < samplePlots.size(); i++){
+//			Point currentPlot = samplePlots.get(i);
+//			double x = currentPlot.getCoordinate().x;
+//			double y = currentPlot.getCoordinate().y;
+//			fileWriter.write(Double.toString(x) + ",");
+//			fileWriter.write(Double.toString(y) + ",");
+//			// the following if-else block is to derive the plot index number for the output file (index starts at one for each stratum)
+//			if (plotStratumName == (String)currentPlot.getUserData()){ // if plotStratumName is same as for the plot before, then continue increasing index j
+//				j++;				
+//			}else{
+//				plotStratumName = (String)currentPlot.getUserData(); // if plotStratumName has changed, then reset index j to 1
+//				j = 1;
+//			}
+//			fileWriter.write((j) + ","); // "Plot_nr" derived from samplePlots-ArrayList index position 
+//			fileWriter.write((String)currentPlot.getUserData() + "\n"); // der Polygonname fehlt jetzt noch
+//		}
+//		fileWriter.close();
 }
 	
 	
