@@ -289,7 +289,7 @@ public class SamplingFunctionalityMethods {
 			
 			// write output to file
 			File outputFile = getFile();
-			writeOutput(outputFile, outputPlots);
+			writeOutput(outputFile, outputPlots, clusterSampling);
 			
 			// if everything went well...
 			return true;
@@ -569,8 +569,16 @@ public class SamplingFunctionalityMethods {
 		
 		// iterate over seed points
 		for(Plot seedPoint : clusterSeedPoints){
-			// add each seed point to output
-			outputPlots.add(seedPoint);
+			
+			
+			// use seedPoint.plotNr as clusterNr and set new seedPoint.plotNr to 1
+			int clusterNr = seedPoint.getPlotNr();
+			int subPlotNr = 1;
+			seedPoint.setClusterNr(clusterNr);
+			seedPoint.setPlotNr(subPlotNr);
+			
+			// add each seed point to output after changing its numbering
+						outputPlots.add(seedPoint);
 			
 			double x = seedPoint.getPoint().getCoordinate().x;
 			double y = seedPoint.getPoint().getCoordinate().y;
@@ -586,9 +594,11 @@ public class SamplingFunctionalityMethods {
 
 				// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
 				if(point.within(stratum.getGeometry())){
+					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS());
+					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 					outputPlots.add(plot);
+					
 				}
 				
 				
@@ -614,8 +624,7 @@ public class SamplingFunctionalityMethods {
 	
 	/**
 	 * Get output file. This method shows a saveFileDialog etc.
-	 * This method also writes the file header to prevent writing it multiple times, as the subsequent calls to writeOutput()
-	 * are being executed inside a loop. 
+	 * 
 	 * @return
 	 */
 	private static File getFile() throws Exception{
@@ -644,23 +653,32 @@ public class SamplingFunctionalityMethods {
 			saveFile.createNewFile();
 		}
 		
-		//-----------------------------
-		//write file header here, because  writeOutput() is called multiple times in a loop and the header is only needed once
-		FileWriter fileWriter = new FileWriter(saveFile, true);
-		fileWriter.write("\"X\",\"Y\",\"Plot_nr\",\"Stratum\"\n");
-		fileWriter.close();
-		//-----------------------------
-		
+			
 		
 		return saveFile;
 	}
 	
 	
-	public static void writeOutput(File file, ArrayList<Plot> samplePlots) throws Exception{
+	/**
+	 * 
+	 * @param file
+	 * @param samplePlots
+	 * @param clusterSampling needed in order to adapt file header (determine whether or not to add column "cluster_nr")
+	 * @throws Exception
+	 */
+	public static void writeOutput(File file, ArrayList<Plot> samplePlots, int clusterSampling) throws Exception{
 		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
 
 		FileWriter fileWriter = new FileWriter(file, true); // second param is for appending to file (Yes/No)
 		
+		// write file header
+		// adapt header for CLUSTER_SAMPLING_YES option
+		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){ 
+			fileWriter.write("\"X\",\"Y\",\"Cluster_nr\",\"Plot_nr\",\"Stratum\"\n");
+			
+		} else{
+			fileWriter.write("\"X\",\"Y\",\"Plot_nr\",\"Stratum\"\n"); // header without Clusters
+		}
 		
 		
 		for(Plot plot : samplePlots){
@@ -670,12 +688,11 @@ public class SamplingFunctionalityMethods {
 			double y = plot.getPoint().getCoordinate().y;
 			fileWriter.write(Double.toString(x) + ",");
 			fileWriter.write(Double.toString(y) + ",");
-			// TODO warum schreibt er die Zahlen nicht gescheit???
-//			int clusterNr = plot.getClusterNr();
-//			fileWriter.write(clusterNr);
-			fileWriter.write(plot.getPlotNr());
-			int k = 5;
-			fileWriter.write((String)Integer.toString(k) + ",");
+			// write clusterNr only to output if Cluster Sampling is the chosen sampling option
+			if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+				fileWriter.write(Integer.toString(plot.getClusterNr())+ ",");
+			}
+			fileWriter.write(Integer.toString(plot.getPlotNr()) + ",");
 			fileWriter.write(plot.getStratumName() + "\n");
 			
 			
