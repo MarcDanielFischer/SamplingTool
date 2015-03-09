@@ -102,6 +102,7 @@ public class GUI_Designer extends JFrame {
 	int numSubPlotsinHVerticalLine = 0; // only for clusterShape == H_SHAPE
 	int numClusterSubPlots = 0; // only for clusterSampling == YES
 	int distBetweenSubPlots = 0; // only for clusterSampling == YES
+	private JTextField textField_H_numPlotsHorizontal;
 	
 	
 	
@@ -467,21 +468,21 @@ public class GUI_Designer extends JFrame {
 		// TextField "NumSubPlotsPerCluster"
 		textField_NumSubPlotsPerCluster = new JTextField();
 		textField_NumSubPlotsPerCluster.setEnabled(false);
-		textField_NumSubPlotsPerCluster.setBounds(221, 602, 86, 20);
+		textField_NumSubPlotsPerCluster.setBounds(221, 536, 86, 20);
 		contentPane.add(textField_NumSubPlotsPerCluster);
 		textField_NumSubPlotsPerCluster.setColumns(10);
 		
 		// TextField "DistBetweenSubPlots"
 		textFieldDistBetweenSubPlots = new JTextField();
 		textFieldDistBetweenSubPlots.setEnabled(false);
-		textFieldDistBetweenSubPlots.setBounds(221, 647, 86, 20);
+		textFieldDistBetweenSubPlots.setBounds(221, 590, 86, 20);
 		contentPane.add(textFieldDistBetweenSubPlots);
 		textFieldDistBetweenSubPlots.setColumns(10);
 		
 		// TextField "H_numPlotsVertical"
 		textField_H_numPlotsVertical = new JTextField();
 		textField_H_numPlotsVertical.setEnabled(false);
-		textField_H_numPlotsVertical.setBounds(221, 536, 86, 20);
+		textField_H_numPlotsVertical.setBounds(221, 647, 86, 20);
 		contentPane.add(textField_H_numPlotsVertical);
 		textField_H_numPlotsVertical.setColumns(10);
 		// End TextFields
@@ -496,9 +497,9 @@ public class GUI_Designer extends JFrame {
 		lblSelectedFile.setBounds(92, 47, 448, 30);
 		contentPane.add(lblSelectedFile);
 		
-		lblSubplotsVerticalLine = new JLabel("Sub-plots in one vertical line (only H Clusters):");
+		lblSubplotsVerticalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
 		lblSubplotsVerticalLine.setEnabled(false);
-		lblSubplotsVerticalLine.setBounds(221, 493, 300, 50);
+		lblSubplotsVerticalLine.setBounds(221, 602, 300, 50);
 		contentPane.add(lblSubplotsVerticalLine);
 		
 		lblClusterDesign = new JLabel("Cluster Design:");
@@ -508,12 +509,12 @@ public class GUI_Designer extends JFrame {
 
 		lblDistanceBetweenSubplots = new JLabel("Distance between sub-plots");
 		lblDistanceBetweenSubplots.setEnabled(false);
-		lblDistanceBetweenSubplots.setBounds(221, 612, 200, 50);
+		lblDistanceBetweenSubplots.setBounds(221, 554, 200, 50);
 		contentPane.add(lblDistanceBetweenSubplots);
 		
 		lblSubplotsPerCluster = new JLabel("Sub-plots per Cluster Plot");
 		lblSubplotsPerCluster.setEnabled(false);
-		lblSubplotsPerCluster.setBounds(221, 562, 200, 50);
+		lblSubplotsPerCluster.setBounds(221, 493, 200, 50);
 		contentPane.add(lblSubplotsPerCluster);
 		
 		lblStart_Y = new JLabel("Starting coordinate y:");
@@ -615,6 +616,17 @@ public class GUI_Designer extends JFrame {
 		JButton btnRemove = new JButton("Remove");
 		btnRemove.setBounds(136, 273, 89, 23);
 		contentPane.add(btnRemove);
+		
+		textField_H_numPlotsHorizontal = new JTextField();
+		textField_H_numPlotsHorizontal.setEnabled(false);
+		textField_H_numPlotsHorizontal.setColumns(10);
+		textField_H_numPlotsHorizontal.setBounds(221, 703, 86, 20);
+		contentPane.add(textField_H_numPlotsHorizontal);
+		
+		JLabel lblSubplotsHorizontalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
+		lblSubplotsHorizontalLine.setEnabled(false);
+		lblSubplotsHorizontalLine.setBounds(221, 663, 300, 50);
+		contentPane.add(lblSubplotsHorizontalLine);
 		btnRemove.addActionListener(new ActionListener() {
 			
 			@Override

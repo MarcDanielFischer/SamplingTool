@@ -716,8 +716,46 @@ public class SamplingFunctionalityMethods {
 	
 	
 	public static ArrayList<Plot> create_H_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, int numSubPlotsinHVerticalLine, Stratum stratum){
-		
-		return null;
+
+//		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
+//
+//		// iterate over seed points
+//		for(Plot seedPoint : clusterSeedPoints){
+//
+//
+//			// use seedPoint.plotNr as clusterNr and set new seedPoint.plotNr to 1
+//			int clusterNr = seedPoint.getPlotNr();
+//			int subPlotNr = 1;
+//			seedPoint.setClusterNr(clusterNr);
+//			seedPoint.setPlotNr(subPlotNr);
+//			
+//			// add each seed point to output after changing its numbering
+//			outputPlots.add(seedPoint);
+//			
+//			double x = seedPoint.getPoint().getCoordinate().x;
+//			double y = seedPoint.getPoint().getCoordinate().y;
+//			
+//			// create additional points until reaching the specified total number of plots per cluster
+//			for(int i = 0; i < numClusterSubPlots - 1; i++){
+//				
+//				y += distBetweenSubPlots; // build i-clusters along North-South axis (change only y coordinate)				
+//				
+//				// create Points using GeometryFactory
+//				GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+//				Coordinate coord = new Coordinate( x, y );
+//				Point point = geometryFactory.createPoint( coord );
+//
+//				// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
+//				if(point.within(stratum.getGeometry())){
+//					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+//					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+//					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+//					outputPlots.add(plot);
+//					
+//				}
+//			}
+//		}
+//		return outputPlots;
 	}
 	
 	
