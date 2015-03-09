@@ -157,7 +157,7 @@ public class SamplingFunctionalityMethods {
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
 	public static boolean runSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, int startX, int startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numClusterSubPlots, int distBetweenSubPlots ){
-		
+	// TODO check: param "numStrata" obsolet?
 		
 		// get all features in the shapefile
 		try {
@@ -174,7 +174,7 @@ public class SamplingFunctionalityMethods {
 			}
 			
 			
-		// convert to UTM
+		// reproject selected features to UTM
 			// read input SHP CRS (sourceCRS)
 			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
 			
@@ -221,16 +221,20 @@ public class SamplingFunctionalityMethods {
 				// hier die Samplinglogik
 				// simple random sample
 				if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
+					
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
 						// 1)simple random sample, no cluster plots
 						ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
 						outputPlots.addAll(simpleRandomPlots);
 
 					}
+					
 					// 2)simple random sample with cluster plots
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+						
 						// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
 						ArrayList<Plot> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+						
 						// Second, make a cluster out of each cluster center point
 						if(clusterShape == GUI_Designer.I_SHAPE){
 							// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
@@ -238,13 +242,16 @@ public class SamplingFunctionalityMethods {
 							outputPlots.addAll(i_Plots);
 						}
 						if(clusterShape == GUI_Designer.L_SHAPE){
-
+							ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							outputPlots.addAll(l_Plots);
 						}
 						if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-
+							ArrayList<Plot> square_Plots = create_Square_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							outputPlots.addAll(square_Plots);
 						}
 						if(clusterShape == GUI_Designer.H_SHAPE){
-
+							ArrayList<Plot> h_Plots = create_H_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, numSubPlotsinHVerticalLine,  strataUTM.get(i));
+							outputPlots.addAll(h_Plots);
 						}
 					}
 				}
@@ -398,9 +405,10 @@ public class SamplingFunctionalityMethods {
 		// initialize output ArrayList
 		ArrayList<Plot> output = new ArrayList<Plot>();
 		
-		// BBOX, min/max values --> aber das ist doch doof, dann benutze ich an 2 Stellen BBOX (umständlich), einmal bei CRS-Konversion und hier --> kann man das vermeiden?
+		// BBOX, min/max values 
+		// TODO  BBOX wird an 2 Stellen verwendet (umständlich), einmal bei CRS-Konversion und hier --> kann man das vermeiden?
 		Geometry stratumGeometry = stratum.getGeometry();
-		Envelope envelope = stratumGeometry.getEnvelopeInternal();
+		Envelope envelope = stratumGeometry.getEnvelopeInternal(); // Envelope is Bounding Box
 		double minX = envelope.getMinX();
 		double maxX = envelope.getMaxX();
 		double minY = envelope.getMinY();
@@ -414,7 +422,8 @@ public class SamplingFunctionalityMethods {
 			double X = (Math.random() * (maxX - minX)) + minX;
 			// generate random Y
 			double Y = (Math.random() * (maxY - minY)) + minY;
-			// generate a point from X, Y values created above
+			
+			// generate a point from X, Y values created above using GeometryFactory
 			GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
 			Coordinate coord = new Coordinate( X, Y );
 			Point point = geometryFactory.createPoint( coord );
@@ -558,6 +567,8 @@ public class SamplingFunctionalityMethods {
 	
 	/**
 	 * Grow i-shaped clusters from given seed points with a total of numClusterSubPlots Plots in each cluster and distBetweenSubPlots distance between them (distance in Meters).
+	 * As for now, the clusters are linearly grown from south to north (the cluster seed point is the southernmost plot). 
+	 * TODO check if cluster growing mode must be changed (seed point in the center of the line)
 	 * @param clusterSeedPoints
 	 * @param distBetweenSubPlots
 	 * @param numClusterSubPlots
@@ -578,7 +589,7 @@ public class SamplingFunctionalityMethods {
 			seedPoint.setPlotNr(subPlotNr);
 			
 			// add each seed point to output after changing its numbering
-						outputPlots.add(seedPoint);
+			outputPlots.add(seedPoint);
 			
 			double x = seedPoint.getPoint().getCoordinate().x;
 			double y = seedPoint.getPoint().getCoordinate().y;
@@ -586,8 +597,9 @@ public class SamplingFunctionalityMethods {
 			// create additional points until reaching the specified total number of plots per cluster
 			for(int i = 0; i < numClusterSubPlots - 1; i++){
 				
-				y += distBetweenSubPlots; // build i-clusters along North-South axis				
+				y += distBetweenSubPlots; // build i-clusters along North-South axis (change only y coordinate)				
 				
+				// create Points using GeometryFactory
 				GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
 				Coordinate coord = new Coordinate( x, y );
 				Point point = geometryFactory.createPoint( coord );
@@ -600,26 +612,120 @@ public class SamplingFunctionalityMethods {
 					outputPlots.add(plot);
 					
 				}
-				
-				
-				// TODO problem: what if one of the cluster-subplots is outside the stratum? Drop entire cluster or just leave that one point out? --> now it´s just the one point
-				// TODO how can i give the clusters numbers?
-				
 			}
 		}
 		return outputPlots;
 	}
 	
-	public static void create_L_clusters(){
+	
+	
+	/**
+	 * Grow L-shaped clusters from given seed points with a total of numClusterSubPlots Plots in each cluster and distBetweenSubPlots distance between them (distance in Meters).
+	 * In case of an even total number of Plots shaping the cluster, the vertical axis will be one Plot longer than the horizontal axis (just like the real character "L").
+	 * @param clusterSeedPoints
+	 * @param distBetweenSubPlots
+	 * @param numClusterSubPlots
+	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
+	 */
+	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
+		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
+
+		// iterate over seed points
+		for(Plot seedPoint : clusterSeedPoints){
+
+			// use seedPoint.plotNr as clusterNr and set new seedPoint.plotNr to 1
+			int clusterNr = seedPoint.getPlotNr();
+			int subPlotNr = 1;
+			seedPoint.setClusterNr(clusterNr);
+			seedPoint.setPlotNr(subPlotNr);
+
+			// add each seed point to output after changing its numbering
+			outputPlots.add(seedPoint);
+
+			if(numClusterSubPlots > 1){ // if numClusterSubPlots == 1, the seed point alone will be its own cluster
+				
+				// Determine number of plots to be created along each axis of the L
+				int numSubPlotsVerticalAxis = 0;
+				int numSubPlotsHorizontalAxis = 0;
+				
+				if(numClusterSubPlots % 2 != 0){ // odd total number of Plots shaping the cluster
+					// in case of an odd total Plot number, both axes are of the same length
+					numSubPlotsVerticalAxis = (int)Math.floor(numClusterSubPlots / 2);
+					numSubPlotsHorizontalAxis = (int)Math.floor(numClusterSubPlots / 2);
+				} else{ // even total number of Plots shaping the cluster
+					// in case of an even total Plot number, the vertical axis will be one Plot longer than the horizontal axis
+					numSubPlotsVerticalAxis = numClusterSubPlots / 2;
+					numSubPlotsHorizontalAxis = (numClusterSubPlots / 2) -1;
+				}
+
+
+				// extract seed point coords and use them to build the other Plots
+				double x = seedPoint.getPoint().getCoordinate().x;
+				double y = seedPoint.getPoint().getCoordinate().y;
+
+
+				// build Plots along vertical axis
+				for(int i = 1; i <= numSubPlotsVerticalAxis; i++){
+					y += distBetweenSubPlots; // as we build along the vertical axis, only y coords are affected
+
+					// create Points using GeometryFactory
+					GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+					Coordinate coord = new Coordinate( x, y );
+					Point point = geometryFactory.createPoint( coord );
+
+					// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
+					if(point.within(stratum.getGeometry())){
+						subPlotNr = i * 2; // vertical axis Plots have  even numbers
+						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						outputPlots.add(plot);
+
+					}
+				}
+
+
+				// reset y coord (which has been increased during vertical axis Plot construction)  so that we can start building plots along the horizontal axis
+				y = seedPoint.getPoint().getCoordinate().y;
+
+				// build plots along horizontal axis
+				for(int i = 1; i <= numSubPlotsHorizontalAxis; i++){
+					x += distBetweenSubPlots; // as we build along the vertical axis, only x coords are affected
+
+					// create Points using GeometryFactory
+					GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+					Coordinate coord = new Coordinate( x, y );
+					Point point = geometryFactory.createPoint( coord );
+
+					// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
+					if(point.within(stratum.getGeometry())){
+						subPlotNr = (i * 2)  + 1  ; // horizontal axis Plots have odd numbers
+						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						outputPlots.add(plot);
+
+					}
+				}
+
+			}
+		}
+		return outputPlots;
 
 	}
 	
-	public static void create_H_clusters(){
-
+	
+	
+	
+	public static ArrayList<Plot> create_H_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, int numSubPlotsinHVerticalLine, Stratum stratum){
+		
+		return null;
 	}
 	
-	public static void create_Square_clusters(){
-
+	
+	
+	
+	
+	public static ArrayList<Plot> create_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
+		return null;
 	}
 	
 	/**
