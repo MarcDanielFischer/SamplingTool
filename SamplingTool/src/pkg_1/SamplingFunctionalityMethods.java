@@ -715,7 +715,8 @@ public class SamplingFunctionalityMethods {
 	
 	
 	/**
-	 *Idee: ausgehend vom Saatpunkt erst die Horizontallinie anlegen und dann von den Endpunkten weg die Vertikallinien
+	 *Idee: ausgehend vom Saatpunkt erst die Horizontallinie anlegen und dann von den Endpunkten der Horizontallinie
+	 *weg die Vertikallinien bauen (jeweils erst nach oben, dann nach unten)
 	 *
 	 *param "numClusterSubPlots" brauche mir hier net 
 	 * @param clusterSeedPoints
@@ -741,396 +742,412 @@ public class SamplingFunctionalityMethods {
 		for(Plot seedPoint : clusterSeedPoints){
 			
 			
-			// use seedPoint.plotNr as clusterNr and set index subPlotNr to 1
+			// use seedPoint.plotNr as clusterNr and set index subPlotNr to 0
 			int clusterNr = seedPoint.getPlotNr();
-			int subPlotNr = 1;
+			int subPlotNr = 0;
 
 			// extract coords from seed point in order to construct additional Plots
 			double x = seedPoint.getPoint().getCoordinate().x;
 			double y = seedPoint.getPoint().getCoordinate().y;
 			
-			
-			//---------------------------------------------------
-			// Plots in horizontal line
-			
 			// we need to record the min/max values for x so that we can later build the vertical lines using them  
-			double xMax = 0;
-			double xMin = 0;
+			double xMax = x;
+			double xMin = x;
 			
-//			bei ungerader Zahl von Horizontallinienpunkten:
-//			setze einen an die Stelle vom Saatpunkt und gehe dann nach links und rechts weg
-			if(numSubPlotsinHhorizontalLine % 2 != 0){ // if number of Plots in horizontal line is odd, the seed point itself will be the central Plot
-				
-				// Zentralpunkt
-				seedPoint.setClusterNr(clusterNr);
-				seedPoint.setPlotNr(subPlotNr);
-				// add seed point to output after changing its numbering only if number of plots in horizontal line is odd
-				outputPlots.add(seedPoint);
-				
-				
-				// Punkte nach rechts (Osten) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHhorizontalLine -1) / 2; i++){
-					x += distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-	
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-						
-					}
-					
-					xMax = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
-				}
-				
-				// reset x value so that we can create Plots in the other direction
-				x = seedPoint.getPoint().getCoordinate().x;
-				
-				// Punkte nach links (Westen) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHhorizontalLine -1) / 2; i++){
-					x -= distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-	
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-						
-					}
-					
-					xMin = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
-				}
-			}
-			
-			
-			
-			// if number of Plots in horizontal line is even, the seed point will NOT be the central Plot
-			if(numSubPlotsinHhorizontalLine % 2 == 0){ 
-				
-				//--------------------------------------------
-				// Plots to the right of seed point
-				
-				// first Plot to the right is half the plotDist away from seedpoint
-				x += distBetweenSubPlots / 2;
-				Coordinate coordFirstPlotRight = new Coordinate( x, y );
-				Point pointFirstPlotRight = geometryFactory.createPoint( coordFirstPlotRight );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointFirstPlotRight.within(stratum.getGeometry())){
-					// subPlotNr++; // as this is the first subPlot, we don´t want to increase subPlotNr yet 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointFirstPlotRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-					
-				}
-				
-				// restliche Punkte nach rechts (Osten) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHhorizontalLine / 2) -1 ; i++){ // Achtung, veränderte Zählweise im For-loop
-					x += distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-	
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-						
-					}
-					
-					xMax = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
-				}
-				
-				// reset x value so that we can create Plots in the other direction
-				x = seedPoint.getPoint().getCoordinate().x;
-				
-				
-				//--------------------------------------------
-				// Plots to the left of seed point
-				
-				// first Plot to the left is half the plotDist away from seed point
-				x -= distBetweenSubPlots / 2;
-				Coordinate coordFirstPlotLeft = new Coordinate( x, y );
-				Point pointFirstPlotLeft = geometryFactory.createPoint( coordFirstPlotLeft );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointFirstPlotLeft.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointFirstPlotLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-					
-				}
-				
-				// Punkte nach links (Westen) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHhorizontalLine / 2) -1 ; i++){ // Achtung, veränderte Zählweise im For-loop
-					x -= distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-	
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-						
-					}
-					
-					xMin = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
-				}
-			}
 
+			//-----------------------------------------------------------------------------------------------
+			// Plots in horizontal line
+			if(numSubPlotsinHhorizontalLine > 0){ // only create Plots in horizontal line if there are any to create
+
+
+				//-----------------------------------------------------
+				// odd number of Plots in horizontal line
+				//			bei ungerader Zahl von Horizontallinienpunkten:
+				//			setze einen an die Stelle vom Saatpunkt und gehe dann nach links und rechts weg
+				if(numSubPlotsinHhorizontalLine % 2 != 0){ // if number of Plots in horizontal line is odd, the seed point itself will be the central Plot
+
+					// Zentralpunkt
+					seedPoint.setClusterNr(clusterNr);
+					subPlotNr++;
+					seedPoint.setPlotNr(subPlotNr);
+					// add seed point to output after changing its numbering only if number of plots in horizontal line is odd
+					outputPlots.add(seedPoint);
+
+
+					// Punkte nach rechts (Osten) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHhorizontalLine -1) / 2; i++){
+						x += distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+
+						xMax = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
+					}
+
+					// reset x value so that we can create Plots in the other direction
+					x = seedPoint.getPoint().getCoordinate().x;
+
+					// Punkte nach links (Westen) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHhorizontalLine -1) / 2; i++){
+						x -= distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+
+						xMin = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
+					}
+				}
+
+
+				//-----------------------------------------------------
+				// even number of Plots in horizontal line
+				// if number of Plots in horizontal line is even, the seed point will NOT be the central Plot
+				if(numSubPlotsinHhorizontalLine % 2 == 0){ 
+
+					//-----------------------------------
+					// Plots to the right of seed point
+
+					// first Plot to the right is half the plotDist away from seedpoint
+					x += distBetweenSubPlots / 2;
+					Coordinate coordFirstPlotRight = new Coordinate( x, y );
+					Point pointFirstPlotRight = geometryFactory.createPoint( coordFirstPlotRight );
+					// check if Point inside stratum, create Plot and add Plot to output ArrayList
+					if(pointFirstPlotRight.within(stratum.getGeometry())){
+						// subPlotNr++; // as this is the first subPlot, we don´t want to increase subPlotNr yet 
+						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						Plot plot = new Plot(pointFirstPlotRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						outputPlots.add(plot);
+
+					}
+
+					// restliche Punkte nach rechts (Osten) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHhorizontalLine / 2) -1 ; i++){ // Achtung, veränderte Zählweise im For-loop
+						x += distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+
+						}
+
+						xMax = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
+					}
+
+					// reset x value so that we can create Plots in the other direction
+					x = seedPoint.getPoint().getCoordinate().x;
+
+
+					//-----------------------------------
+					// Plots to the left of seed point
+
+					// first Plot to the left is half the plotDist away from seed point
+					x -= distBetweenSubPlots / 2;
+					Coordinate coordFirstPlotLeft = new Coordinate( x, y );
+					Point pointFirstPlotLeft = geometryFactory.createPoint( coordFirstPlotLeft );
+					// check if Point inside stratum, create Plot and add Plot to output ArrayList
+					if(pointFirstPlotLeft.within(stratum.getGeometry())){
+						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						Plot plot = new Plot(pointFirstPlotLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						outputPlots.add(plot);
+
+					}
+
+					// Punkte nach links (Westen) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHhorizontalLine / 2) -1 ; i++){ // Achtung, veränderte Zählweise im For-loop
+						x -= distBetweenSubPlots; // as we operate along a horizontal line here, only x values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+
+						}
+
+						xMin = x; // we need to record the min/max values for x so that we can build the vertical lines using them   
+					}
+				}
+			} else{ // if numSubPlotsinHhorizontalLine == 0
+				// if there aren`t any Plots in the horizontal line,we use the seed point's x coord to be able to construct the vertical lines
+				xMin = xMax = seedPoint.getPoint().getCoordinate().x; 
+			}
 			
-			//---------------------------------------------------
+			
+
+
+
+			//-----------------------------------------------------------------------------------------------
 			// Plots in vertical lines
-			
-			// odd number of Plots in vertical lines --> central Plots are exactly in line with horizontal line Plots(it's different with even number of Plots in vertical lines)
-			// Idea: create central Plots first, then create Plots to the north and after that Plots to the south
-			if(numSubPlotsinHVerticalLine % 2 != 0){ 
-				// based on xMin and xMax from the horizontal line (line end Plots), we construct the two vertical lines 
-				
-				// vertical line on the right
-				// central Plot (exactly in line with horizontal line Plots)
-				x = xMax + distBetweenSubPlots; // extreme right Plot of horizontal line + distBetweenSubPlots
-				Coordinate coordCentralPlotRight = new Coordinate( x, y );
-				Point pointCentralPlotRight = geometryFactory.createPoint( coordCentralPlotRight );
+			if(numSubPlotsinHVerticalLine > 0){ // only create Plots in vertical lines if there are any to create
 
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointCentralPlotRight.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointCentralPlotRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-				}
-				
-				// restliche Punkte nach oben (Norden) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
+
+				// odd number of Plots in vertical lines --> central Plots are exactly in line with horizontal line Plots(it's different with even number of Plots in vertical lines)
+				// Idea: create central Plots first, then create Plots to the north and after that Plots to the south
+				if(numSubPlotsinHVerticalLine % 2 != 0){ 
+					// based on xMin and xMax from the horizontal line (line end Plots), we construct the two vertical lines 
+
+					//---------------------------
+					// vertical line on the right
+					// central Plot (exactly in line with horizontal line Plots)
+					x = xMax + distBetweenSubPlots; // extreme right Plot of horizontal line + distBetweenSubPlots
+					Coordinate coordCentralPlotRight = new Coordinate( x, y );
+					Point pointCentralPlotRight = geometryFactory.createPoint( coordCentralPlotRight );
+
 					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
+					if(pointCentralPlotRight.within(stratum.getGeometry())){
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						Plot plot = new Plot(pointCentralPlotRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 						outputPlots.add(plot);
 					}
-				}
-				
-				// reset y value so that we can create Plots in the other direction
-				y = seedPoint.getPoint().getCoordinate().y;
-				
-				// restliche Punkte nach unten (Süden) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
+
+					// restliche Punkte nach oben (Norden) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+					// reset y value so that we can create Plots in the other direction
+					y = seedPoint.getPoint().getCoordinate().y;
+
+					// restliche Punkte nach unten (Süden) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+
+					//---------------------------
+					// vertical line on the left
+
+					// reset y value so that we can create Plots afresh
+					y = seedPoint.getPoint().getCoordinate().y;
+
+					// central Plot
+					x = xMin - distBetweenSubPlots; // extreme left Plot of horizontal line - distBetweenSubPlots
+					Coordinate coordCentralPlotLeft = new Coordinate( x, y );
+					Point pointCentralPlotLeft = geometryFactory.createPoint( coordCentralPlotLeft );
 					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
+					if(pointCentralPlotLeft.within(stratum.getGeometry())){
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						Plot plot = new Plot(pointCentralPlotLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 						outputPlots.add(plot);
 					}
+
+					// restliche Punkte nach oben (Norden) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+					// reset y value so that we can create Plots in the other direction
+					y = seedPoint.getPoint().getCoordinate().y;
+
+					// restliche Punkte nach unten (Süden) weg anlegen
+					for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+
 				}
-				
-				
-				//---------------------------
-				// vertical line on the left
-				
-				// reset y value so that we can create Plots afresh
-				y = seedPoint.getPoint().getCoordinate().y;
-				
-				// central Plot
-				x = xMin - distBetweenSubPlots; // extreme left Plot of horizontal line - distBetweenSubPlots
-				Coordinate coordCentralPlotLeft = new Coordinate( x, y );
-				Point pointCentralPlotLeft = geometryFactory.createPoint( coordCentralPlotLeft );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointCentralPlotLeft.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointCentralPlotLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-				}
-				
-				// restliche Punkte nach oben (Norden) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-	
+
+				//-------------------------------------------
+				// even number of Plots in vertical lines --> no Plots are exactly in line with horizontal line 
+				if(numSubPlotsinHVerticalLine % 2 == 0){ 
+					// based on xMin and xMax from the horizontal line (line end Plots), we construct the two vertical lines 
+
+					// the special thing here is that we have to derive the positions of the Plots next to the ones in the horizontal line 
+					// using the Pythagorean theorem in order to keep up the correct distBetweenSubPlots
+
+					//---------------------------
+					// vertical line to the right
+					// x value is the same for all Plots in one vertical line
+					x = xMax + Math.sqrt( (distBetweenSubPlots * distBetweenSubPlots) - ( (distBetweenSubPlots /2) * (distBetweenSubPlots /2))); // here's the Pythagorean theorem
+
+					// start Plot to the north
+					// the start y coord is half the distBetweenSubPlots to the north of the horizontal line in this case 
+					y = seedPoint.getPoint().getCoordinate().y + (distBetweenSubPlots / 2);
+					Coordinate coordStartPlotNorthRight = new Coordinate( x, y );
+					Point pointStartPlotNorthRight = geometryFactory.createPoint( coordStartPlotNorthRight );
 					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
+					if(pointStartPlotNorthRight.within(stratum.getGeometry())){
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						Plot plot = new Plot(pointStartPlotNorthRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 						outputPlots.add(plot);
 					}
-				}
-				
-				// reset y value so that we can create Plots in the other direction
-				y = seedPoint.getPoint().getCoordinate().y;
-				
-				// restliche Punkte nach unten (Süden) weg anlegen
-				for(int i = 0; i < (numSubPlotsinHVerticalLine -1 ) / 2 ; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-	
+
+					// remaining Plots to the north
+					for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+
+					// start Plot to the south
+					// the start y coord is half the distBetweenSubPlots to the south of the horizontal line in this case 
+					y = seedPoint.getPoint().getCoordinate().y - (distBetweenSubPlots / 2);
+					Coordinate coordStartPlotSouthRight = new Coordinate( x, y );
+					Point pointStartPlotSouthRight = geometryFactory.createPoint( coordStartPlotSouthRight );
 					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
+					if(pointStartPlotSouthRight.within(stratum.getGeometry())){
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						Plot plot = new Plot(pointStartPlotSouthRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 						outputPlots.add(plot);
 					}
+
+					// remaining Plots to the south
+					for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+					//---------------------------
+					// vertical line to the left
+					// x value is the same for all Plots in one vertical line
+					x = xMin - Math.sqrt( (distBetweenSubPlots * distBetweenSubPlots) - ( (distBetweenSubPlots /2) * (distBetweenSubPlots /2))); // here's the Pythagorean theorem
+
+					// start Plot to the north
+					// the start y coord is half the distBetweenSubPlots to the north of the horizontal line in this case 
+					y = seedPoint.getPoint().getCoordinate().y + (distBetweenSubPlots / 2);
+					Coordinate coordStartPlotNorthLeft = new Coordinate( x, y );
+					Point pointStartPlotNorthLeft = geometryFactory.createPoint( coordStartPlotNorthLeft );
+					// check if Point inside stratum, create Plot and add Plot to output ArrayList
+					if(pointStartPlotNorthLeft.within(stratum.getGeometry())){
+						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						Plot plot = new Plot(pointStartPlotNorthLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						outputPlots.add(plot);
+					}
+
+					// remaining Plots to the north
+					for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
+
+
+					// start Plot to the south
+					// the start y coord is half the distBetweenSubPlots to the south of the horizontal line in this case 
+					y = seedPoint.getPoint().getCoordinate().y - (distBetweenSubPlots / 2);
+					Coordinate coordStartPlotSouthLeft = new Coordinate( x, y );
+					Point pointStartPlotSouthLeft = geometryFactory.createPoint( coordStartPlotSouthLeft );
+					// check if Point inside stratum, create Plot and add Plot to output ArrayList
+					if(pointStartPlotSouthLeft.within(stratum.getGeometry())){
+						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						Plot plot = new Plot(pointStartPlotSouthLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						outputPlots.add(plot);
+					}
+
+					// remaining Plots to the south
+					for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
+						y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
+						Coordinate coord = new Coordinate( x, y );
+						Point point = geometryFactory.createPoint( coord );
+						// check if Point inside stratum, create Plot and add Plot to output ArrayList
+						if(point.within(stratum.getGeometry())){
+							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							outputPlots.add(plot);
+						}
+					}
 				}
-				
-				
 			}
-
-			//-------------------------------------------
-			// even number of Plots in vertical lines --> no Plots are exactly in line with horizontal line 
-			if(numSubPlotsinHVerticalLine % 2 == 0){ 
-				// based on xMin and xMax from the horizontal line (line end Plots), we construct the two vertical lines 
-				
-				// the special thing here is that we have to derive the positions of the Plots next to the ones in the horizontal line 
-				// using the Pythagorean theorem in order to keep up the correct distBetweenSubPlots
-				
-				// vertical line to the right
-				// x value is the same for all Plots in one vertical line
-				x = xMax + Math.sqrt( (distBetweenSubPlots * distBetweenSubPlots) - ( (distBetweenSubPlots /2) * (distBetweenSubPlots /2))); // here's the Pythagorean theorem
-				
-				// start Plot to the north
-				// the start y coord is half the distBetweenSubPlots to the north of the horizontal line in this case 
-				y = seedPoint.getPoint().getCoordinate().y + (distBetweenSubPlots / 2);
-				Coordinate coordStartPlotNorthRight = new Coordinate( x, y );
-				Point pointStartPlotNorthRight = geometryFactory.createPoint( coordStartPlotNorthRight );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointStartPlotNorthRight.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointStartPlotNorthRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-				}
-				
-				// remaining Plots to the north
-				for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-					}
-				}
-				
-				
-				// start Plot to the south
-				// the start y coord is half the distBetweenSubPlots to the south of the horizontal line in this case 
-				y = seedPoint.getPoint().getCoordinate().y - (distBetweenSubPlots / 2);
-				Coordinate coordStartPlotSouthRight = new Coordinate( x, y );
-				Point pointStartPlotSouthRight = geometryFactory.createPoint( coordStartPlotSouthRight );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointStartPlotSouthRight.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointStartPlotSouthRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-				}
-				
-				// remaining Plots to the south
-				for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-					}
-				}
-
-				// vertical line to the left
-				// x value is the same for all Plots in one vertical line
-				x = xMin - Math.sqrt( (distBetweenSubPlots * distBetweenSubPlots) - ( (distBetweenSubPlots /2) * (distBetweenSubPlots /2))); // here's the Pythagorean theorem
-				
-				// start Plot to the north
-				// the start y coord is half the distBetweenSubPlots to the north of the horizontal line in this case 
-				y = seedPoint.getPoint().getCoordinate().y + (distBetweenSubPlots / 2);
-				Coordinate coordStartPlotNorthLeft = new Coordinate( x, y );
-				Point pointStartPlotNorthLeft = geometryFactory.createPoint( coordStartPlotNorthLeft );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointStartPlotNorthLeft.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointStartPlotNorthLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-				}
-				
-				// remaining Plots to the north
-				for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y += distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-					}
-				}
-				
-				
-				// start Plot to the south
-				// the start y coord is half the distBetweenSubPlots to the south of the horizontal line in this case 
-				y = seedPoint.getPoint().getCoordinate().y - (distBetweenSubPlots / 2);
-				Coordinate coordStartPlotSouthLeft = new Coordinate( x, y );
-				Point pointStartPlotSouthLeft = geometryFactory.createPoint( coordStartPlotSouthLeft );
-				// check if Point inside stratum, create Plot and add Plot to output ArrayList
-				if(pointStartPlotSouthLeft.within(stratum.getGeometry())){
-					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-					Plot plot = new Plot(pointStartPlotSouthLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-					outputPlots.add(plot);
-				}
-				
-				// remaining Plots to the south
-				for( int i = 0; i < (numSubPlotsinHVerticalLine / 2 ) - 1; i++){ // Achtung, immer wieder veränderte Zählweise im For-loop
-					y -= distBetweenSubPlots; // as we operate along a vertical line here, only y values are affected
-					Coordinate coord = new Coordinate( x, y );
-					Point point = geometryFactory.createPoint( coord );
-					// check if Point inside stratum, create Plot and add Plot to output ArrayList
-					if(point.within(stratum.getGeometry())){
-						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-						outputPlots.add(plot);
-					}
-				}
-			}
-
 
 		}
 
-		
+
 		return outputPlots;
-		
-		
-		
-		
+
+
+
+
 		// So habe ich es bei den i-clusters gemacht
 //		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
 //
