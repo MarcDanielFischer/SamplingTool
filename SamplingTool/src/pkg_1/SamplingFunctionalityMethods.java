@@ -1139,57 +1139,8 @@ public class SamplingFunctionalityMethods {
 					}
 				}
 			}
-
 		}
-
-
 		return outputPlots;
-
-
-
-
-		// So habe ich es bei den i-clusters gemacht
-//		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
-//
-//		// iterate over seed points
-//		for(Plot seedPoint : clusterSeedPoints){
-//
-//
-//			// use seedPoint.plotNr as clusterNr and set new seedPoint.plotNr to 1
-//			int clusterNr = seedPoint.getPlotNr();
-//			int subPlotNr = 1;
-//			seedPoint.setClusterNr(clusterNr);
-//			seedPoint.setPlotNr(subPlotNr);
-//			
-//			// add each seed point to output after changing its numbering
-//			outputPlots.add(seedPoint);
-//			
-//			double x = seedPoint.getPoint().getCoordinate().x;
-//			double y = seedPoint.getPoint().getCoordinate().y;
-//			
-//			// create additional points until reaching the specified total number of plots per cluster
-//			for(int i = 0; i < numClusterSubPlots - 1; i++){
-//				
-//				y += distBetweenSubPlots; // build i-clusters along North-South axis (change only y coordinate)				
-//				
-//				// create Points using GeometryFactory
-//				GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
-//				Coordinate coord = new Coordinate( x, y );
-//				Point point = geometryFactory.createPoint( coord );
-//
-//				// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
-//				if(point.within(stratum.getGeometry())){
-//					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
-//					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-//					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
-//					outputPlots.add(plot);
-//					
-//				}
-//			}
-//		}
-//		return outputPlots;
-		
-		
 	}
 	
 	
@@ -1197,8 +1148,129 @@ public class SamplingFunctionalityMethods {
 	
 	
 	public static ArrayList<Plot> create_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
-		return null;
+		
+		// ersma nur für "runde" Werte implementieren: 4,8,16,32...
+		// Formel für "runde" Werte: numClusterSubPlots % 2^(2+x) == 0 --> 2^2=4, 2^(2+1)=8, 2^(2+2)=16, ...
+		// Vorgehen: Startpunkt oben links (willkürlich, oben links auf der Seite fängt man auch zu lesen an) und dann im Uhrzeigersinn durchnumerieren
+		// erst wird der Startpunkt angelegt und dann die Seiten (oben, rechts, unten, links) in jeweils eigener for-Schleife
+		// (Seed Point ist in der Mitte des Quadrats)
+
+		// initialize output ArrayList
+		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
+
+		// three objects to be used repeatedly inside the loop
+		GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+		Coordinate coord;
+		Point point;
+		
+		// iterate over seed points
+		for(Plot seedPoint : clusterSeedPoints){
+
+			// use seedPoint.plotNr as clusterNr
+			int clusterNr = seedPoint.getPlotNr();
+			int subPlotNr = 1;
+
+			// extract coords from seedPoint in order to create cluster Plots using them
+			double x = seedPoint.getPoint().getCoordinate().x;
+			double y = seedPoint.getPoint().getCoordinate().y;
+
+			// erst den Plot oben links (Staertpunkt) anlegen, danach die vier Seiten jede in ihrer eigenen Schleife
+			// first Plot (oben links)
+			x = x - (distBetweenSubPlots * (numClusterSubPlots / 8));
+			y = y + (distBetweenSubPlots * (numClusterSubPlots / 8));
+
+			// create Points using GeometryFactory
+			coord = new Coordinate( x, y );
+			point = geometryFactory.createPoint( coord );
+
+			// check if Point inside stratum, create Plot and add Plot to output ArrayList
+			if(point.within(stratum.getGeometry())){
+				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				outputPlots.add(plot);
+				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+			}
+
+
+			// obere Seite: numClusterSubPlots / 4 mal die x-coord ändern und Punkte setzen
+			for(int i = 0; i < (numClusterSubPlots / 4); i++){
+				x = x + distBetweenSubPlots;
+
+				// create Points using GeometryFactory
+				coord = new Coordinate( x, y );
+				point = geometryFactory.createPoint( coord );
+
+				// check if Point inside stratum, create Plot and add Plot to output ArrayList
+				if(point.within(stratum.getGeometry())){
+					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					outputPlots.add(plot);
+					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+				}
+			}
+
+
+			// rechte Seite: numClusterSubPlots / 4 mal die y-coord ändern und Punkte setzen
+			for(int i = 0; i < (numClusterSubPlots / 4); i++){
+				y = y - distBetweenSubPlots;
+
+				// create Points using GeometryFactory
+				coord = new Coordinate( x, y );
+				point = geometryFactory.createPoint( coord );
+
+				// check if Point inside stratum, create Plot and add Plot to output ArrayList
+				if(point.within(stratum.getGeometry())){
+					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					outputPlots.add(plot);
+					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+				}
+			}
+
+
+			// untere Seite: numClusterSubPlots / 4 mal die x-coord ändern und Punkte setzen
+			for(int i = 0; i < (numClusterSubPlots / 4); i++){
+				x = x - distBetweenSubPlots;
+
+				// create Points using GeometryFactory
+				coord = new Coordinate( x, y );
+				point = geometryFactory.createPoint( coord );
+
+				// check if Point inside stratum, create Plot and add Plot to output ArrayList
+				if(point.within(stratum.getGeometry())){
+					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					outputPlots.add(plot);
+					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+				}
+			}
+
+
+			// linke Seite: (numClusterSubPlots / 4) -1 mal die y-coord ändern und Punkte setzen (einmal weniger, weil der Startpunkt oben links ja schon da ist)
+			for(int i = 0; i < (numClusterSubPlots / 4) -1; i++){
+				y = y + distBetweenSubPlots;
+
+				// create Points using GeometryFactory
+				coord = new Coordinate( x, y );
+				point = geometryFactory.createPoint( coord );
+
+				// check if Point inside stratum, create Plot and add Plot to output ArrayList
+				if(point.within(stratum.getGeometry())){
+					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					outputPlots.add(plot);
+					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+				}
+			}
+
+		}
+		return outputPlots;
 	}
+
+
+
+	
+	
 	
 	/**
 	 * Get output file. This method shows a saveFileDialog etc.
