@@ -2,7 +2,6 @@
  * Hier kommen die Methoden rein, die die eigentliche Funktionalität des 
  * Sampling-Tools ausmachen (Trennung GUI / Funktionalität)
  * 
- * - TODO: Methoden von Katjas Draft hier reinpacken
  */
 
 package pkg_1;
@@ -156,7 +155,7 @@ public class SamplingFunctionalityMethods {
 	 * It takes the sampling params from the GUI, implements the sampling logic
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
-	public static boolean runSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, int startX, int startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots ){
+	public static boolean runSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots ){
 	// TODO check: param "numStrata" obsolet?
 		
 		// get all features in the shapefile
@@ -259,30 +258,56 @@ public class SamplingFunctionalityMethods {
 				// systematic sampling
 				if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
 
-					// random or specified starting point?
+					Point startPointUTM = null; // must initialize variable that gets assigned some meaningful value inside if-Block outside if-block, otherwise it cannot be used in following statements 
+					
+					// get a starting point both for random and specified starting point options
 					if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
-
+						// get a random startin point using simpleRandomSampling()
+						startPointUTM = simpleRandomSampling(strataUTM.get(i), 1).get(0).getPoint(); // dieser Punkt hat bereits UTM-Koords, weil input stratumUTM schon in UTM ist
+ 
 					}
 					if(startingPoint == GUI_Designer.STARTING_POINT_SPECIFIED){
-
+						// make a Point out of given start point coords (LonLat)
+						GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+						Coordinate coord = new Coordinate( startX, startY );
+						Point startPointLonLat = geometryFactory.createPoint( coord ); // dieser Punkt ist in LonLat, weil startX und startY LonLat sind und hat kein associated CRS
+						
+						// reproject startPointLonLat using a MathTransform that transforms between sourceCRS and targetCRS
+						// source CRS: we use the already defined input file's CRS here as the grid start point refers to a location within the input file area
+						// target CRS: use the current stratum's CRS (as grid points are to be located inside this stratum, even if the starting point is located oustide the stratum)
+						CoordinateReferenceSystem targetCRS = strataUTM.get(i).getCRS();
+						// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
+						MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
+						// convert Point to target CRS
+						startPointUTM = (Point) JTS.transform( startPointLonLat, transform);
 					}
-
+					
+					// call systemacticSampling() using the newly created startPoint
+					ArrayList<Plot> systematicPlots = systematicSampling(strataUTM.get(i),startPointUTM, gridDistX, gridDistY );
+					
 					// 3) systematic sample , no cluster plots
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
-
+						outputPlots.addAll(systematicPlots);
 					}
 					// 4) systematic sample with cluster plots
 					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 						if(clusterShape == GUI_Designer.I_SHAPE){
-							// output_plots <- I_plots(cluster_coord, plot_dist[l], cluster_nrplots[l])
+							ArrayList<Plot> i_Plots = create_I_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							outputPlots.addAll(i_Plots);
 						}
 						if(clusterShape == GUI_Designer.L_SHAPE){
+							ArrayList<Plot> l_Plots = create_L_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							outputPlots.addAll(l_Plots);
 
 						}
 						if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+							ArrayList<Plot> square_Plots = create_Square_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+							outputPlots.addAll(square_Plots);
 
 						}
 						if(clusterShape == GUI_Designer.H_SHAPE){
+							ArrayList<Plot> h_Plots = create_H_clusters(systematicPlots, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
+							outputPlots.addAll(h_Plots);
 
 						}
 					}
@@ -554,11 +579,77 @@ public class SamplingFunctionalityMethods {
 		return samplePlots;
 	}
 
-	public static void systematicSampling(){ // (Params: shape, x, y, dx, dy)
-		// systematic sample with given starting point 
-		// if no starting point given: call simpleRandomSampling() to create one
-
+	
+	public static ArrayList<Plot> systematicSampling(Stratum stratum, Point startPoint, int gridDistX, int  gridDistY){
+		
+		// initialize output ArrayList
+		ArrayList<Plot> output = new ArrayList<Plot>();
+				
+		// BBOX
+		Envelope boundingBbox = stratum.getGeometry().getEnvelopeInternal();
+		
+		// BBBOX min / max values
+		double minX = boundingBbox.getMinX();
+		double maxX = boundingBbox.getMaxX();
+		double minY = boundingBbox.getMinY();
+		double maxY = boundingBbox.getMaxY();
+		
+		// determine numPoints in all directions (seen from the starting point, how many points are there in each direction until reaching the edges of the boundingBox)
+		double xStart = startPoint.getCoordinate().x;
+		double yStart = startPoint.getCoordinate().y;
+		int numPointsLeft = (int)Math.floor((xStart - minX) / gridDistX); 
+		int numPointsRight = (int)Math.floor((maxX - xStart) / gridDistX); 
+		int numPointsUp = (int)Math.floor((maxY -yStart) / gridDistY); 
+		int numPointsDown = (int)Math.floor((yStart - minY) / gridDistY); 
+		
+		// calculate totals: numPointsHorizontal (number of points in one grid row covering the whole width of the bounding box) and numPointsVertical
+		// (number of points in one grid column covering the whole length of the bounding box)
+		int numPointsHorizontal = numPointsLeft + numPointsRight + 1; // numPoints to the right and left of the starting point + starting point itself
+		int numPointsVertical = numPointsUp + numPointsDown + 1; // numPoints up and down + starting point itself
+		
+		// create first grid point in the upper left corner
+		// coords
+		double x = xStart - (gridDistX * numPointsLeft);
+		double y = yStart + (gridDistY * numPointsUp);
+		// generate a point from X, Y values created above using GeometryFactory
+		GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+		Coordinate coord;
+		Point point;
+		
+		// create the grid (must use Point objects instead of just x,y coords to be able to check whether they are within the stratum later on)
+		// initialize ArrayList object to store all grid Points
+		ArrayList<Point> gridPoints = new ArrayList<Point>(); 
+		// nested for loop: create grid Points starting from upper left corner of the grid, from top to bottom (same order as when reading a page of text) 
+		for(int i = 0; i < numPointsVertical; i++ ){
+			 
+			 for(int k = 0; k < numPointsHorizontal; k++){
+				 // create a Point 
+				 coord = new Coordinate( x, y );
+				 point = geometryFactory.createPoint( coord );
+				 gridPoints.add(point);
+				 // increase x coord
+				 x += gridDistX;
+				  
+			 }
+			 // reset x to its lefternmost value ("carriage return")
+			 x = xStart - (gridDistX * numPointsLeft);
+			 
+			 // shift y coord one row down
+			 y -= gridDistY;
+		 }
+		
+		// check whether Points are within the stratum and only create Plots from Points within stratum
+		int plotNr = 1; // index for the Plots to be created
+		for(Point p : gridPoints){
+			if(p.within(stratum.getGeometry())){
+				Plot plot = new Plot(p, stratum.getName(), stratum.getCRS(), plotNr);
+				output.add(plot);
+				plotNr ++;
+			}
+		}
+		return output;
 	}
+	
 	
 	public static void clusterSampling(){
 		// Weiterverzweigung zu den verschiedenen Clusterformen (I,L,H,Square)

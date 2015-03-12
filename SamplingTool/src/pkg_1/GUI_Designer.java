@@ -90,8 +90,8 @@ public class GUI_Designer extends JFrame {
 	int startingPoint = 0; // only for option SYSTEMATIC_SAMPLING 
 	static final int STARTING_POINT_RANDOM = 1; // constants to specify startingPoint
 	static final int STARTING_POINT_SPECIFIED = 2;
-	int startX = 0; // only for option STARTING_POINT_SPECIFIED 
-	int startY = 0; // only for option STARTING_POINT_SPECIFIED 
+	double startX = 0; // only for option STARTING_POINT_SPECIFIED 
+	double startY = 0; // only for option STARTING_POINT_SPECIFIED 
 	int clusterSampling;
 	static final int CLUSTER_SAMPLING_NO = 1; // constants to specify clusterSampling
 	static final int CLUSTER_SAMPLING_YES = 2;
@@ -396,8 +396,14 @@ public class GUI_Designer extends JFrame {
 					// Starting Point 
 					if((String)comboBox_StartingPoint.getSelectedItem() == "Specified"){
 						startingPoint = STARTING_POINT_SPECIFIED;
-						startX = Integer.parseInt(textField_Start_X.getText());
-						startY = Integer.parseInt(textField_Start_Y.getText());
+						
+						// make sure the TextField input numbers are separated by a point instead of a comma (numbers using decimal commas cannot be parsed by Double.parseDouble())
+						String x = textField_Start_X.getText().replace(",", ".");
+						
+						String y = textField_Start_Y.getText().replace(",", ".");
+						
+						startX = Double.parseDouble(x);
+						startY = Double.parseDouble(y);
 					} else{
 						startingPoint = STARTING_POINT_RANDOM; // use STARTING_POINT_RANDOM as default unless otherwise specified
 					}
