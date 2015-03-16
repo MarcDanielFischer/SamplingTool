@@ -204,9 +204,9 @@ public class GUI_Designer extends JFrame {
 					try{
 						// read values from specified column and write them to JList
 						ArrayList<String> strataNames = SamplingFunctionalityMethods.getColumnValues(inputFile, selectedItem);
-						// sort strataNames alphabetically 
-						Collections.sort(strataNames);
+						
 						strataNamesList = new JList(strataNames.toArray());
+						// insert JList into ScrollPane
 						scrollPaneStrataList.setViewportView(strataNamesList);
 
 

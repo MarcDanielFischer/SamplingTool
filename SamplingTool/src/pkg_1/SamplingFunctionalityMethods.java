@@ -9,6 +9,7 @@ package pkg_1;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JFileChooser;
@@ -70,10 +71,32 @@ public class SamplingFunctionalityMethods {
 	 * @throws Exception
 	 */
 	public static ArrayList<String> getColumnValues (File inputFile, String strataColumn) throws Exception{
+		// initialize output ArrayList
 		ArrayList<String> values = new ArrayList<String>();
+		// get all features contained in the Shapefile
 		ArrayList<SimpleFeature> features = getFeatures(inputFile);
+		// iterate over features and extract the specified column´s attribute values 
 		for(SimpleFeature feature : features){
 			values.add((String)feature.getAttribute(strataColumn));
+		}
+		// sort values alphabetically 
+		Collections.sort(values);
+		// remove duplicate values
+		for(int i = 0; i < values.size() -1 ; i++){
+			// wenn es einen nächsten gibt, anschauen
+			while(true){
+				// if there is a next element in the ArrayList...
+				if(i+1 <= values.size() -1){ // i+1 is the index for the value following the current value. We must make sure that it is not ouf of bounds (ie, pointing to an index not contained in the ArrayList)
+					if(values.get(i).equals(values.get(i+1))){
+						values.remove(i+1);
+					}else{
+						break;
+					}
+				}else{
+					break;
+
+				}
+			}
 		}
 		return values;
 	}
@@ -187,28 +210,37 @@ public class SamplingFunctionalityMethods {
 		 */
 			
 			// iterate over selectedFeatures and merge Geometries using union() if they have the same name (eg, belong to the same stratum)
-			for(int i = 0; i < selectedFeatures.size()-1; i++){ // bis zum vorletzten Element iterieren, da mit dem darauffolgenden Element verglichen wird
-				// if the next feature belongs to the same stratum as the current feature...
-				String featureName1 = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
-				String featureName2 = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
-				if(featureName1.equals(featureName2)){
-					// extract Geometries from both Features
-					Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
-					Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
-					
-					// merge Geometries using union()
-					// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
-					Geometry geomMerge = geom1.union(geom2);
-					
-					// set as Geometry for feature i
-					// works also for Polygon objects although column type is specified as MultiPolygon 
-					selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
-					
-					// remove feature i+1 from ArrayList
-					selectedFeatures.remove(i+1);
+			for(int i = 0; i < selectedFeatures.size()-1; i++){ // iterate until penultimate element so that there is always a following element (avoid ArrayIndexOutOfBoundsException)
+				// while the next feature belongs to the same stratum as the current feature --> merge Geometries
+				String nameCurrentFeature = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
+				while(true){
+					if(i+1 <=  selectedFeatures.size()-1){ // avoid IndexOutOfBoundsException while looking at the next element 
+						String nameNextFeature = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
+
+						if(nameCurrentFeature.equals(nameNextFeature)){
+							// extract Geometries from both Features
+							Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
+							Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
+
+							// merge Geometries using union()
+							// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
+							Geometry geomMerge = geom1.union(geom2);
+
+							// set as Geometry for feature i
+							// works also for Polygon objects although column type is specified as MultiPolygon 
+							selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
+
+							// remove feature i+1 from ArrayList
+							selectedFeatures.remove(i+1);
+						}else{
+							break;
+						}
+					}else{
+						break;
+					}
 				}
 			}
-			
+
 			
 		// reproject selected features to UTM
 			// read input SHP CRS (sourceCRS)
