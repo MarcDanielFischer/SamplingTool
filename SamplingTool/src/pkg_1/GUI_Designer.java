@@ -181,14 +181,14 @@ public class GUI_Designer extends JFrame {
 				}
 			}
 		});
-		btnBrowse.setBounds(10, 25, 89, 23);
+		btnBrowse.setBounds(10, 11, 89, 23);
 		contentPane.add(btnBrowse);
 		
 		
 		
 		// Combo Box "Columns"
 		comboBox_Columns = new JComboBox();
-		comboBox_Columns.setBounds(10, 145, 200, 30);
+		comboBox_Columns.setBounds(10, 100, 200, 30);
 		contentPane.add(comboBox_Columns);
 		// when a column is selected, all the values in this column will be read automatically and filled as 
         // items into the "Strata" JList
@@ -203,7 +203,7 @@ public class GUI_Designer extends JFrame {
 				if(selectedItem != "the_geom" && selectedItem != null){ // die Werte für Spalte the_geom sollen nicht ausgelesen werden
 					try{
 						// read values from specified column and write them to JList
-						ArrayList<String> strataNames = SamplingFunctionalityMethods.getStrataColumnValues(inputFile, selectedItem);
+						ArrayList<String> strataNames = SamplingFunctionalityMethods.getColumnValues(inputFile, selectedItem);
 						// sort strataNames alphabetically 
 						Collections.sort(strataNames);
 						strataNamesList = new JList(strataNames.toArray());
@@ -524,7 +524,7 @@ public class GUI_Designer extends JFrame {
 		//-----------------------------------------------------------------------------------------
 		// Labels
 		lblSelectedFile = new JLabel("No File selected yet");
-		lblSelectedFile.setBounds(92, 47, 448, 30);
+		lblSelectedFile.setBounds(92, 33, 448, 30);
 		contentPane.add(lblSelectedFile);
 		
 		lblSubplotsVerticalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
@@ -553,15 +553,15 @@ public class GUI_Designer extends JFrame {
 		contentPane.add(lblStart_Y);
 
 		lblNewLabel = new JLabel("Selected File:");
-		lblNewLabel.setBounds(10, 47, 82, 30);
+		lblNewLabel.setBounds(10, 33, 82, 30);
 		contentPane.add(lblNewLabel);
 		
 		lbl_SelectColumn = new JLabel("Choose one of the Shapefile Column Names for Strata Selection:");
-		lbl_SelectColumn.setBounds(10, 115, 450, 30);
+		lbl_SelectColumn.setBounds(10, 70, 450, 30);
 		contentPane.add(lbl_SelectColumn);
 		
 		lblChooseStrataFor = new JLabel("Choose Strata (one or more) for Sampling:");
-		lblChooseStrataFor.setBounds(10, 186, 336, 30);
+		lblChooseStrataFor.setBounds(10, 141, 336, 30);
 		contentPane.add(lblChooseStrataFor);
 		
 		lblSamplingDesign = new JLabel("Sampling Design: ");
@@ -612,7 +612,7 @@ public class GUI_Designer extends JFrame {
 		table = new JTable();
 		table.setModel(model);
 		JScrollPane scrollPaneTable = new JScrollPane();
-		scrollPaneTable.setBounds(235, 227, 326, 105);
+		scrollPaneTable.setBounds(389, 226, 229, 105);
 		contentPane.add(scrollPaneTable);
 		scrollPaneTable.setViewportView(table); // so werden auch die Spaltennamen angezeigt (fallen ohne Darstellung in Scrollpane weg)
 		// End JTable Stuff
@@ -623,14 +623,14 @@ public class GUI_Designer extends JFrame {
 		// scrollPaneStrataList: JScrollPane as container for the JList that holds the polygon names
 		// initialize outside action method so that element is visible before polygons are avaílable
 		scrollPaneStrataList = new JScrollPane();
-		scrollPaneStrataList.setBounds(14, 226, 112, 120);
+		scrollPaneStrataList.setBounds(10, 170, 270, 204);
 		contentPane.add(scrollPaneStrataList);
 		
 		
 		
 		// btnAdd to move selected items from JList to JTable
 		JButton btnAdd = new JButton("Add");
-		btnAdd.setBounds(136, 243, 89, 23);
+		btnAdd.setBounds(290, 243, 89, 23);
 		contentPane.add(btnAdd);
 		btnAdd.addActionListener(new ActionListener() {
 			
@@ -649,7 +649,7 @@ public class GUI_Designer extends JFrame {
 		
 		// btnRemove to remove items from JTable
 		JButton btnRemove = new JButton("Remove");
-		btnRemove.setBounds(136, 273, 89, 23);
+		btnRemove.setBounds(290, 273, 89, 23);
 		contentPane.add(btnRemove);
 		btnRemove.addActionListener(new ActionListener() {
 			

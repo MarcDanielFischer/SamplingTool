@@ -37,6 +37,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Polygon;
 
 public class SamplingFunctionalityMethods {
 	
@@ -68,7 +69,7 @@ public class SamplingFunctionalityMethods {
 	 * @return
 	 * @throws Exception
 	 */
-	public static ArrayList<String> getStrataColumnValues (File inputFile, String strataColumn) throws Exception{
+	public static ArrayList<String> getColumnValues (File inputFile, String strataColumn) throws Exception{
 		ArrayList<String> values = new ArrayList<String>();
 		ArrayList<SimpleFeature> features = getFeatures(inputFile);
 		for(SimpleFeature feature : features){
@@ -165,10 +166,46 @@ public class SamplingFunctionalityMethods {
 		// filter selected features
 			ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
 			for(int i = 0; i < selectedStrata.length; i++){ // evtl Zeit sparen, indem ich hier optimiert vorgehe
-				for(SimpleFeature feature : allFeatures){ // TODO hier mit while-loop, damit der Schleifendurchlauf abgekürzt wird
-					if(feature.getAttribute(sampleColumn).toString().equals(selectedStrata[i])){
-						selectedFeatures.add(feature);
+				for(SimpleFeature currentFeature : allFeatures){ 
+					if(currentFeature.getAttribute(sampleColumn).toString().equals(selectedStrata[i])){
+						selectedFeatures.add(currentFeature);
 					}
+				}
+			}
+		
+			
+		/*
+		 * Multi-Feature-Strata problem: 
+		 * 
+		 * Strata may consist of more than a single feature. In order to treat them as a single entity, 
+		 * they must somehow be merged into a single object. 
+		 * 
+		 * The way we do this here is to combine multi-feature-strata geometries into 
+		 * one single geometry (if the geometries are adjacent, they can be combined into a Polygon object,
+		 * otherwise they will be a MultiPolygon) before reprojecting them to UTM (otherwise they would not be combinable any more 
+		 * as they would possibly be reprojected to different UTM zones)
+		 */
+			
+			// iterate over selectedFeatures and merge Geometries using union() if they have the same name (eg, belong to the same stratum)
+			for(int i = 0; i < selectedFeatures.size()-1; i++){ // bis zum vorletzten Element iterieren, da mit dem darauffolgenden Element verglichen wird
+				// if the next feature belongs to the same stratum as the current feature...
+				String featureName1 = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
+				String featureName2 = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
+				if(featureName1.equals(featureName2)){
+					// extract Geometries from both Features
+					Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
+					Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
+					
+					// merge Geometries using union()
+					// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
+					Geometry geomMerge = geom1.union(geom2);
+					
+					// set as Geometry for feature i
+					// works also for Polygon objects although column type is specified as MultiPolygon 
+					selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
+					
+					// remove feature i+1 from ArrayList
+					selectedFeatures.remove(i+1);
 				}
 			}
 			
@@ -196,9 +233,6 @@ public class SamplingFunctionalityMethods {
 				// make a Stratum object out of the targetGeometry that holds additional information (CRS, stratumName )
 				Stratum stratum = new Stratum(targetGeometry, targetCRS, (String)feature.getAttribute(sampleColumn));
 				strataUTM.add(stratum);
-				
-
-				
 			}
 			
 			
