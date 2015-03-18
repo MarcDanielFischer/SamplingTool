@@ -46,6 +46,8 @@ public class GUI_Designer extends JFrame {
 	private JTextField textField_H_numPlotsVertical;
 	private JTextField textField_DistX;
 	private JTextField textField_DistY;
+	private JTextField textField_H_numPlotsHorizontal;
+	private JTextField textField_BufferSize;
 	private JLabel lblSelectedFile;
 	private JLabel lblSubplotsVerticalLine;
 	private JLabel lblSubplotsHorizontalLine;
@@ -105,8 +107,7 @@ public class GUI_Designer extends JFrame {
 	int numSubPlotsinHhorizontalLine = 0; // only for clusterShape == H_SHAPE
 	int numClusterSubPlots = 0; // only for clusterSampling == YES
 	int distBetweenSubPlots = 0; // only for clusterSampling == YES
-	private JTextField textField_H_numPlotsHorizontal;
-	private JTextField textField_BufferSize;
+	double bufferSize;
 	
 	
 	
@@ -178,7 +179,7 @@ public class GUI_Designer extends JFrame {
 							comboBox_Columns.addItem(colName);
 						}
 					}catch(Exception e){
-						JOptionPane.showMessageDialog(null, "Some error ocurred, possibly you have not selected a Shapefile" + e.toString());
+						JOptionPane.showMessageDialog(null, "File error: make sure you have selected a Shapefile\n" + e.toString());
 					}
 				}
 			}
@@ -365,102 +366,181 @@ public class GUI_Designer extends JFrame {
 			}
 		});
 		
-		
+
 		// "Run Sampling" Button 
 		btnRunSampling = new JButton("Run Sampling");
 		btnRunSampling.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				// alle eingetragenen Samplingparameter zusammentragen und auf die am Klassenanfang deklarierten Variablen schreiben
 				// TODO besseres Verfahren überlegen, die ganzen Samplingparameter zu übergeben (zu viele für eine einzelne Methode) --> Hashmap, eigenes Objekt nur für die Parameter?
-				
+
 				//----------------------------------------
 				// Start Samplingparameter
 				// --> Erfassung der Parameter enthält Samplinglogik
+
+				// TODO see if this type of bulletproofing the code can be achieved in a better way
+				boolean allParamsOK = true; // flag variable
+				
+				if(inputFile == null){
+					JOptionPane.showMessageDialog(null, "make sure you have selected a Shapefile");
+					allParamsOK = false;
+
+				}
+
 				sampleColumn = (String)comboBox_Columns.getSelectedItem();
+
 				numStrata = model.getRowCount();
-				selectedStrata = new String[numStrata];
-				// read stratum names from JTable
-				for(int i = 0; i < numStrata; i++){ // iterate over rows containing stratum names
-					selectedStrata[i] = (String) model.getValueAt(i, 0); // i = row; 0 = "name" column
-				}
-
-				// Sampling Design params
-				if((String)comboBox_SamplingDesign.getSelectedItem()=="Simple Random Sampling"){
-					samplingDesign = SIMPLE_RANDOM_SAMPLING;
-					// Number of plots already specified in Array "numPlotsToBeSampled"
-					numPlotsToBeSampled = new int[numStrata];
-					for(int i = 0; i < numStrata; i++){ // iterate over rows
-						numPlotsToBeSampled[i] = Integer.parseInt((String)model.getValueAt(i, 1)); // i = row; 1 = "number of Plots" column
-					}
-				}else if ((String)comboBox_SamplingDesign.getSelectedItem()=="Systematic Sampling"){
-					samplingDesign = SYSTEMATIC_SAMPLING;
-					gridDistX = Integer.parseInt(textField_DistX.getText()); 
-					gridDistY = Integer.parseInt(textField_DistY.getText()); 
-					// Starting Point 
-					if((String)comboBox_StartingPoint.getSelectedItem() == "Specified"){
-						startingPoint = STARTING_POINT_SPECIFIED;
-						
-						// make sure the TextField input numbers are separated by a point instead of a comma (numbers using decimal commas cannot be parsed by Double.parseDouble())
-						String x = textField_Start_X.getText().replace(",", ".");
-						
-						String y = textField_Start_Y.getText().replace(",", ".");
-						
-						startX = Double.parseDouble(x);
-						startY = Double.parseDouble(y);
-					} else{
-						startingPoint = STARTING_POINT_RANDOM; // use STARTING_POINT_RANDOM as default unless otherwise specified
-					}
-				}
-				
-				
-				// Cluster Sampling params
-				if((String)comboBox_ClusterSampling.getSelectedItem()=="Yes"){
-					clusterSampling = CLUSTER_SAMPLING_YES;
-					// all following params are only needed if clusterSampling == YES,
-					// hence they are treated inside this if statement
-					// Cluster Shape
-					switch((String)comboBox_ClusterDesign.getSelectedItem()){
-					case "I": clusterShape = I_SHAPE;
-					break;
-					case "L": clusterShape = L_SHAPE;
-					break;
-					case "H": clusterShape = H_SHAPE;
-					break;
-					case "Square": clusterShape = SQUARE_SHAPE;
-					break;
-					}
-					// Number of Plots in a vertical line of the H-Shape
-					if(clusterShape == H_SHAPE){
-						numSubPlotsinHVerticalLine = Integer.parseInt(textField_H_numPlotsVertical.getText());
-						numSubPlotsinHhorizontalLine = Integer.parseInt(textField_H_numPlotsHorizontal.getText());
-
-					}
-					// number of sub-plots per cluster (not for H-shaped clusters)
-					if(clusterShape != H_SHAPE){
-						numClusterSubPlots = Integer.parseInt(textField_NumSubPlotsPerCluster.getText());						
-					}
-
-					// Distance between Cluster SubPlots
-					distBetweenSubPlots = Integer.parseInt(textFieldDistBetweenSubPlots.getText());
-
-				}else clusterSampling = CLUSTER_SAMPLING_NO; // use CLUSTER_SAMPLING_NO as default option, unless CLUSTER_SAMPLING_YES is explicitly specified
-				
-				// size of the negative Buffer to be applied to strata polygons
-				double bufferSize = Double.parseDouble(textField_BufferSize.getText());
-				// Ende Samplingparameter
-				//----------------------------------------
-
-				// Methode erst hinterher aufrufen mit gesammelten Sachen drin --> Methodensignatur ändern
-				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
-				boolean samplingSuccessful = SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize ); 
-				if(samplingSuccessful){
-					JOptionPane.showMessageDialog(null, "output file successfully written");
+				if(numStrata == 0 && allParamsOK == true){
+					JOptionPane.showMessageDialog(null, "Please select at least one stratum");
+					allParamsOK = false;
 				}else{
-					JOptionPane.showMessageDialog(null, "some error occurred");
-				}
+					selectedStrata = new String[numStrata];
+					// read stratum names from JTable
+					for(int i = 0; i < numStrata; i++){ // iterate over rows containing stratum names
+						selectedStrata[i] = (String) model.getValueAt(i, 0); // i = row; 0 = "name" column
+					}
 
+					// Sampling Design params
+					if((String)comboBox_SamplingDesign.getSelectedItem()== null && allParamsOK == true ){
+						JOptionPane.showMessageDialog(null, "Please choose a Sampling Design Option");
+						allParamsOK = false;
+					}else if((String)comboBox_SamplingDesign.getSelectedItem()=="Simple Random Sampling"){
+						samplingDesign = SIMPLE_RANDOM_SAMPLING;
+						// Number of plots already specified in Array "numPlotsToBeSampled"
+						numPlotsToBeSampled = new int[numStrata];
+
+						try{
+							for(int i = 0; i < numStrata; i++){ // iterate over rows
+								numPlotsToBeSampled[i] = Integer.parseInt((String)model.getValueAt(i, 1)); // i = row; 1 = "number of Plots" column
+							}
+						}catch(Exception e){
+							JOptionPane.showMessageDialog(null, "Please make sure to type the number of plots to be sampled for each stratum\n and then press Enter\n" + e.toString());
+							allParamsOK = false;
+						}
+
+					}else if ((String)comboBox_SamplingDesign.getSelectedItem()=="Systematic Sampling"){
+						samplingDesign = SYSTEMATIC_SAMPLING;
+
+						try{
+							gridDistX = Integer.parseInt(textField_DistX.getText()); 
+							gridDistY = Integer.parseInt(textField_DistY.getText()); 
+						}catch(Exception e){
+							JOptionPane.showMessageDialog(null, "Please make sure to specify grid distances X and Y\n" + e.toString());
+							allParamsOK = false;
+						}
+
+						// Starting Point 
+						if((String)comboBox_StartingPoint.getSelectedItem() == "Specified"){
+							startingPoint = STARTING_POINT_SPECIFIED;
+
+							// make sure the TextField input numbers are separated by a point instead of a comma (numbers using decimal commas cannot be parsed by Double.parseDouble())
+							String x = textField_Start_X.getText().replace(",", ".");
+
+							String y = textField_Start_Y.getText().replace(",", ".");
+
+							try{
+								startX = Double.parseDouble(x);
+								startY = Double.parseDouble(y);
+							}catch(Exception e){
+								JOptionPane.showMessageDialog(null, "Please make sure to specify starting coordinates  X and Y\n" + e.toString());
+								allParamsOK = false;
+							}
+
+
+						} else{
+							startingPoint = STARTING_POINT_RANDOM; // use STARTING_POINT_RANDOM as default unless otherwise specified
+						}
+					}
+
+
+					// Cluster Sampling params
+					if((String)comboBox_ClusterSampling.getSelectedItem()=="Yes"){
+						clusterSampling = CLUSTER_SAMPLING_YES;
+						// all following params are only needed if clusterSampling == YES,
+						// hence they are treated inside this if statement
+						// Cluster Shape
+						if((String)comboBox_ClusterDesign.getSelectedItem() == null && allParamsOK == true ){
+							JOptionPane.showMessageDialog(null, "Please make sure to select a Cluster Design Option");
+							allParamsOK = false;
+						}
+						
+						if(allParamsOK == true){
+							switch((String)comboBox_ClusterDesign.getSelectedItem()){
+							case "I": clusterShape = I_SHAPE;
+							break;
+							case "L": clusterShape = L_SHAPE;
+							break;
+							case "H": clusterShape = H_SHAPE;
+							break;
+							case "Square": clusterShape = SQUARE_SHAPE;
+							break;
+							}
+						}
+
+						// Number of Plots in a vertical line of the H-Shape
+						if(clusterShape == H_SHAPE && allParamsOK == true){
+							try{
+								numSubPlotsinHVerticalLine = Integer.parseInt(textField_H_numPlotsVertical.getText());
+								numSubPlotsinHhorizontalLine = Integer.parseInt(textField_H_numPlotsHorizontal.getText());
+							}catch(Exception e){
+								JOptionPane.showMessageDialog(null, "Please specify the number of Sub-Plots in the vertical and horizontal lines of the H-Clusters");
+								allParamsOK = false;
+							}
+							
+							
+
+						}
+						// number of sub-plots per cluster (not for H-shaped clusters)
+						if(clusterShape != H_SHAPE && allParamsOK == true){
+							try{
+								numClusterSubPlots = Integer.parseInt(textField_NumSubPlotsPerCluster.getText());
+							}catch(Exception e){
+								JOptionPane.showMessageDialog(null, "Please select a number of Sub-plots per Cluster Plot");
+								allParamsOK = false;
+							}
+
+						}
+
+						// Distance between Cluster SubPlots
+						if(allParamsOK == true){
+							try{
+								distBetweenSubPlots = Integer.parseInt(textFieldDistBetweenSubPlots.getText());
+							}catch(Exception e){
+								JOptionPane.showMessageDialog(null, "Please specify the distance between Sub-plots in a Cluster Plot");
+								allParamsOK = false;
+							}
+						}
+
+
+
+					}else clusterSampling = CLUSTER_SAMPLING_NO; // use CLUSTER_SAMPLING_NO as default option, unless CLUSTER_SAMPLING_YES is explicitly specified
+
+					// size of the negative Buffer to be applied to strata polygons
+					try{
+						bufferSize = Double.parseDouble(textField_BufferSize.getText());
+					}catch(Exception e){
+						JOptionPane.showMessageDialog(null, "Please specify a Plot Radius\n" + e.toString());
+						allParamsOK = false;
+					}
+
+
+					// Ende Samplingparameter
+					//----------------------------------------
+
+
+					// Methode erst hinterher aufrufen mit gesammelten Sachen drin --> Methodensignatur ändern
+					// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
+					if(allParamsOK == true ){ 
+						try{
+							SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize ); 
+						}catch(Exception e){
+							JOptionPane.showMessageDialog(null, e.toString());
+						}	
+					}
+				}
 			}
-		});
+		}
+				);
 		btnRunSampling.setBounds(4, 800, 122, 23);
 		contentPane.add(btnRunSampling);
 

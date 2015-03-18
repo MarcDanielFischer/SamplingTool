@@ -47,24 +47,23 @@ public class SamplingFunctionalityMethods {
 	 * It takes the sampling params from the GUI, implements the sampling logic
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
-	public static boolean runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize ){
-		
+	public static void runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize ) throws Exception {
+
 		// get all features in the shapefile
-		try {
-			ArrayList<SimpleFeature> allFeatures = getFeatures(inputFile); // dieser SChritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
-		
+		ArrayList<SimpleFeature> allFeatures = getFeatures(inputFile); // dieser SChritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
+
 		// filter selected features
-			ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
-			
-			for(int i = 0; i < selectedStrata.length; i++){ // evtl Zeit sparen, indem ich hier optimiert vorgehe
-				for(SimpleFeature currentFeature : allFeatures){ 
-					if(currentFeature.getAttribute(sampleColumn).toString().equals(selectedStrata[i])){
-						selectedFeatures.add(currentFeature);
-					}
+		ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
+
+		for(int i = 0; i < selectedStrata.length; i++){ // evtl Zeit sparen, indem ich hier optimiert vorgehe
+			for(SimpleFeature currentFeature : allFeatures){ 
+				if(currentFeature.getAttribute(sampleColumn).toString().equals(selectedStrata[i])){
+					selectedFeatures.add(currentFeature);
 				}
 			}
-		
-			
+		}
+
+
 		/*
 		 * Multi-Feature-Strata problem: 
 		 * 
@@ -76,206 +75,201 @@ public class SamplingFunctionalityMethods {
 		 * otherwise they will be a MultiPolygon) before reprojecting them to UTM (otherwise they would not be combinable any more 
 		 * as they would possibly be reprojected to different UTM zones)
 		 */
-			
-			// iterate over selectedFeatures and merge Geometries using union() if they have the same name (eg, belong to the same stratum)
-			if(selectedFeatures.size() > selectedStrata.length){ // perform this step only if there actually is at least one Multi-Feature stratum
-				for(int i = 0; i < selectedFeatures.size()-1; i++){ // iterate until penultimate element so that there is always a following element (avoid ArrayIndexOutOfBoundsException)
-					// while the next feature belongs to the same stratum as the current feature --> merge Geometries
-					String nameCurrentFeature = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
-					while(true){
-						if(i+1 <=  selectedFeatures.size()-1){ // avoid IndexOutOfBoundsException while looking at the next element 
-							String nameNextFeature = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
 
-							if(nameCurrentFeature.equals(nameNextFeature)){
-								// extract Geometries from both Features
-								Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
-								Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
+		// iterate over selectedFeatures and merge Geometries using union() if they have the same name (eg, belong to the same stratum)
+		if(selectedFeatures.size() > selectedStrata.length){ // perform this step only if there actually is at least one Multi-Feature stratum
+			for(int i = 0; i < selectedFeatures.size()-1; i++){ // iterate until penultimate element so that there is always a following element (avoid ArrayIndexOutOfBoundsException)
+				// while the next feature belongs to the same stratum as the current feature --> merge Geometries
+				String nameCurrentFeature = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
+				while(true){
+					if(i+1 <=  selectedFeatures.size()-1){ // avoid IndexOutOfBoundsException while looking at the next element 
+						String nameNextFeature = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
 
-								// merge Geometries using union()
-								// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
-								Geometry geomMerge = geom1.union(geom2);
+						if(nameCurrentFeature.equals(nameNextFeature)){
+							// extract Geometries from both Features
+							Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
+							Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
 
-								// set as Geometry for feature i
-								// works also for Polygon objects although column type is specified as MultiPolygon 
-								selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
+							// merge Geometries using union()
+							// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
+							Geometry geomMerge = geom1.union(geom2);
 
-								// remove feature i+1 from ArrayList
-								selectedFeatures.remove(i+1);
-							}else{
-								break;
-							}
+							// set as Geometry for feature i
+							// works also for Polygon objects although column type is specified as MultiPolygon 
+							selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
+
+							// remove feature i+1 from ArrayList
+							selectedFeatures.remove(i+1);
 						}else{
 							break;
 						}
+					}else{
+						break;
 					}
 				}
 			}
-			
-			
+		}
 
-			
+
+
+
 		// reproject selected features to UTM
-			// read input SHP CRS (sourceCRS)
-			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
-			
-			
-			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here),
-			// apply a negative buffer to the Geometries 
-			// and add converted Geometries to ArrayList
-			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS (different UTM zones) according to its position
-			ArrayList<Stratum> strataUTM= new ArrayList<Stratum>();
-			
-			for(SimpleFeature currentFeature : selectedFeatures){
-				CoordinateReferenceSystem targetCRS = getTargetCRS(currentFeature); // targetCRS:in UTM projection
-				// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
-				MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
-				// get feature Geometry
-				Geometry sourceGeometry = (Geometry) currentFeature.getAttribute( "the_geom" );
-				// convert Geometry to target CRS
-				Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
-				
-				// apply negative buffer to targetGeometry before creating Stratum object with it and starting the actual sampling process 
-				Geometry bufferGeometry = targetGeometry.buffer(-bufferSize);
-				
-				// make a Stratum object out of the targetGeometry that holds additional information (CRS, stratumName )
-				Stratum stratum = new Stratum(bufferGeometry, targetCRS, (String)currentFeature.getAttribute(sampleColumn));
-				strataUTM.add(stratum);
-			}
-			
-			
-			
-			// create ArrayList to store and append output plots (ArrayList is a more convenient type to append data to than a regular array)
-			ArrayList<Plot> outputPlots = new ArrayList<Plot>();
-			
-			// iterate over converted Geometries and sample plots according to input params
-			for(int i = 0; i < strataUTM.size(); i++){
-				// sample plots
+		// read input SHP CRS (sourceCRS)
+		CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
 
 
-				// muss man diese if-Verzweigungen IN den for loop reinschreiben oder kann man das irgendwie trennen?
-				// --> ich könnte erst die Samplingart bestimmen und dann
-				// den jeweiligen Fach-Sample-Methoden einfach die ganze ArrayList übergeben und die loopen dann 
-				// --> aber wie ist das, wenn die Straten unterschiedliche CRS haben? dann müsste eine MEthode über mehrere Straten mit versch.
-				// CRS iterieren und in jedes auf unterschiedlich Weise Punkte hineinsampeln
+		// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here),
+		// apply a negative buffer to the Geometries 
+		// and add converted Geometries to ArrayList
+		// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS (different UTM zones) according to its position
+		ArrayList<Stratum> strataUTM= new ArrayList<Stratum>();
+
+		for(SimpleFeature currentFeature : selectedFeatures){
+			CoordinateReferenceSystem targetCRS = getTargetCRS(currentFeature); // targetCRS:in UTM projection
+			// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
+			MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
+			// get feature Geometry
+			Geometry sourceGeometry = (Geometry) currentFeature.getAttribute( "the_geom" );
+			// convert Geometry to target CRS
+			Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
+
+			// apply negative buffer to targetGeometry before creating Stratum object with it and starting the actual sampling process 
+			Geometry bufferGeometry = targetGeometry.buffer(-bufferSize);
+
+			// make a Stratum object out of the targetGeometry that holds additional information (CRS, stratumName )
+			Stratum stratum = new Stratum(bufferGeometry, targetCRS, (String)currentFeature.getAttribute(sampleColumn));
+			strataUTM.add(stratum);
+		}
 
 
-				// hier die Samplinglogik
-				// simple random sample
-				if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
-					
-					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
-						// 1)simple random sample, no cluster plots
-						ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
-						outputPlots.addAll(simpleRandomPlots);
 
-					}
-					
-					// 2)simple random sample with cluster plots
-					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-						
-						// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
-						ArrayList<Plot> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
-						
-						// Second, make a cluster out of each cluster center point
-						if(clusterShape == GUI_Designer.I_SHAPE){
-							// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
-							ArrayList<Plot> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-							outputPlots.addAll(i_Plots);
-						}
-						if(clusterShape == GUI_Designer.L_SHAPE){
-							ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-							outputPlots.addAll(l_Plots);
-						}
-						if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-							ArrayList<Plot> square_Plots = create_Square_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-							outputPlots.addAll(square_Plots);
-						}
-						if(clusterShape == GUI_Designer.H_SHAPE){
-							ArrayList<Plot> h_Plots = create_H_clusters(clusterSeedPoints, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
-							outputPlots.addAll(h_Plots);
-						}
-					}
+		// create ArrayList to store and append output plots (ArrayList is a more convenient type to append data to than a regular array)
+		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
+
+		// iterate over converted Geometries and sample plots according to input params
+		for(int i = 0; i < strataUTM.size(); i++){
+			// sample plots
+
+
+			// muss man diese if-Verzweigungen IN den for loop reinschreiben oder kann man das irgendwie trennen?
+			// --> ich könnte erst die Samplingart bestimmen und dann
+			// den jeweiligen Fach-Sample-Methoden einfach die ganze ArrayList übergeben und die loopen dann 
+			// --> aber wie ist das, wenn die Straten unterschiedliche CRS haben? dann müsste eine MEthode über mehrere Straten mit versch.
+			// CRS iterieren und in jedes auf unterschiedlich Weise Punkte hineinsampeln
+
+
+			// hier die Samplinglogik
+			// simple random sample
+			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
+
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+					// 1)simple random sample, no cluster plots
+					ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+					outputPlots.addAll(simpleRandomPlots);
+
 				}
 
-				// systematic sampling
-				if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
+				// 2)simple random sample with cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 
-					Point startPointUTM = null; // must initialize variable that gets assigned some meaningful value inside if-Block outside if-block, otherwise it cannot be used in following statements 
-					
-					// get a starting point both for random and specified starting point options
-					if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
-						// get a random startin point using simpleRandomSampling()
-						startPointUTM = simpleRandomSampling(strataUTM.get(i), 1).get(0).getPoint(); // dieser Punkt hat bereits UTM-Koords, weil input stratumUTM schon in UTM ist
- 
+					// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
+					ArrayList<Plot> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+
+					// Second, make a cluster out of each cluster center point
+					if(clusterShape == GUI_Designer.I_SHAPE){
+						// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
+						ArrayList<Plot> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+						outputPlots.addAll(i_Plots);
 					}
-					if(startingPoint == GUI_Designer.STARTING_POINT_SPECIFIED){
-						// make a Point out of given start point coords (LonLat)
-						GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
-						Coordinate coord = new Coordinate( startX, startY );
-						Point startPointLonLat = geometryFactory.createPoint( coord ); // dieser Punkt ist in LonLat, weil startX und startY LonLat sind und hat kein associated CRS
-						
-						// reproject startPointLonLat using a MathTransform that transforms between sourceCRS and targetCRS
-						// source CRS: we use the already defined input file's CRS here as the grid start point refers to a location within the input file area
-						// target CRS: use the current stratum's CRS (as grid points are to be located inside this stratum, even if the starting point is located oustide the stratum)
-						CoordinateReferenceSystem targetCRS = strataUTM.get(i).getCRS();
-						// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
-						MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
-						// convert Point to target CRS
-						startPointUTM = (Point) JTS.transform( startPointLonLat, transform);
+					if(clusterShape == GUI_Designer.L_SHAPE){
+						ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+						outputPlots.addAll(l_Plots);
 					}
-					
-					// call systemacticSampling() using the newly created startPoint
-					ArrayList<Plot> systematicPlots = systematicSampling(strataUTM.get(i),startPointUTM, gridDistX, gridDistY );
-					
-					// 3) systematic sample , no cluster plots
-					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
-						outputPlots.addAll(systematicPlots);
+					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+						ArrayList<Plot> square_Plots = create_Square_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+						outputPlots.addAll(square_Plots);
 					}
-					// 4) systematic sample with cluster plots
-					if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-						if(clusterShape == GUI_Designer.I_SHAPE){
-							ArrayList<Plot> i_Plots = create_I_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-							outputPlots.addAll(i_Plots);
-						}
-						if(clusterShape == GUI_Designer.L_SHAPE){
-							ArrayList<Plot> l_Plots = create_L_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-							outputPlots.addAll(l_Plots);
-
-						}
-						if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-							ArrayList<Plot> square_Plots = create_Square_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-							outputPlots.addAll(square_Plots);
-
-						}
-						if(clusterShape == GUI_Designer.H_SHAPE){
-							ArrayList<Plot> h_Plots = create_H_clusters(systematicPlots, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
-							outputPlots.addAll(h_Plots);
-
-						}
+					if(clusterShape == GUI_Designer.H_SHAPE){
+						ArrayList<Plot> h_Plots = create_H_clusters(clusterSeedPoints, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
+						outputPlots.addAll(h_Plots);
 					}
 				}
-
 			}
-			
-			
+
+			// systematic sampling
+			if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
+
+				Point startPointUTM = null; // must initialize variable that gets assigned some meaningful value inside if-Block outside if-block, otherwise it cannot be used in following statements 
+
+				// get a starting point both for random and specified starting point options
+				if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
+					// get a random startin point using simpleRandomSampling()
+					startPointUTM = simpleRandomSampling(strataUTM.get(i), 1).get(0).getPoint(); // dieser Punkt hat bereits UTM-Koords, weil input stratumUTM schon in UTM ist
+
+				}
+				if(startingPoint == GUI_Designer.STARTING_POINT_SPECIFIED){
+					// make a Point out of given start point coords (LonLat)
+					GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+					Coordinate coord = new Coordinate( startX, startY );
+					Point startPointLonLat = geometryFactory.createPoint( coord ); // dieser Punkt ist in LonLat, weil startX und startY LonLat sind und hat kein associated CRS
+
+					// reproject startPointLonLat using a MathTransform that transforms between sourceCRS and targetCRS
+					// source CRS: we use the already defined input file's CRS here as the grid start point refers to a location within the input file area
+					// target CRS: use the current stratum's CRS (as grid points are to be located inside this stratum, even if the starting point is located oustide the stratum)
+					CoordinateReferenceSystem targetCRS = strataUTM.get(i).getCRS();
+					// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
+					MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
+					// convert Point to target CRS
+					startPointUTM = (Point) JTS.transform( startPointLonLat, transform);
+				}
+
+				// call systemacticSampling() using the newly created startPoint
+				ArrayList<Plot> systematicPlots = systematicSampling(strataUTM.get(i),startPointUTM, gridDistX, gridDistY );
+
+				// 3) systematic sample , no cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+					outputPlots.addAll(systematicPlots);
+				}
+				// 4) systematic sample with cluster plots
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+					if(clusterShape == GUI_Designer.I_SHAPE){
+						ArrayList<Plot> i_Plots = create_I_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+						outputPlots.addAll(i_Plots);
+					}
+					if(clusterShape == GUI_Designer.L_SHAPE){
+						ArrayList<Plot> l_Plots = create_L_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+						outputPlots.addAll(l_Plots);
+
+					}
+					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+						ArrayList<Plot> square_Plots = create_Square_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+						outputPlots.addAll(square_Plots);
+
+					}
+					if(clusterShape == GUI_Designer.H_SHAPE){
+						ArrayList<Plot> h_Plots = create_H_clusters(systematicPlots, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
+						outputPlots.addAll(h_Plots);
+
+					}
+				}
+			}
+
+		}
+
+		if(outputPlots.size()== 0){
+			throw new Exception("No output plots have been generated");
+		}else{
 			// reproject output plots to LatLon
-			UTM2LonLat(outputPlots);
-			
-			// write output to file
-			File outputFile = getFile();
-			writeOutput(outputFile, outputPlots, clusterSampling);
-			
-			// if everything went well...
-			return true;
-			
-		} catch (Exception e) {
-			e.printStackTrace();
+		UTM2LonLat(outputPlots);
+
+		// write output to file
+		File outputFile = getFile();
+		writeOutput(outputFile, outputPlots, clusterSampling);
 		}
 		
-		
-		// if things went not so well (this statement is never reached if everything works fine)
-		return false;
 	}
+
+
 
 	/**
 	 * This method takes a Shapefile as a File object as input parameter and returns
