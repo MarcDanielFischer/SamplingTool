@@ -179,8 +179,7 @@ public class SamplingFunctionalityMethods {
 	 * It takes the sampling params from the GUI, implements the sampling logic
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
-	public static boolean runSampling(File inputFile, String sampleColumn, int numStrata,  String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots ){
-	// TODO check: param "numStrata" obsolet?
+	public static boolean runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots ){
 		
 		// get all features in the shapefile
 		try {
@@ -521,7 +520,7 @@ public class SamplingFunctionalityMethods {
 			
 
 			// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
-			if(point.within(stratumGeometry)){
+			if(point.within(stratumGeometry.buffer(-500.0))){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), plotNr);
 				output.add(plot);

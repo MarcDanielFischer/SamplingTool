@@ -62,6 +62,7 @@ public class GUI_Designer extends JFrame {
 	private JLabel lblNewLabel_3;
 	private JLabel lblStart_X;
 	private JLabel lblDist_y;
+	private JLabel lblBufferSize;
 	private JComboBox comboBox_StartingPoint;
 	private JComboBox comboBox_ClusterSampling;
 	private JComboBox comboBox_Columns;
@@ -105,6 +106,7 @@ public class GUI_Designer extends JFrame {
 	int numClusterSubPlots = 0; // only for clusterSampling == YES
 	int distBetweenSubPlots = 0; // only for clusterSampling == YES
 	private JTextField textField_H_numPlotsHorizontal;
+	private JTextField textField_BufferSize;
 	
 	
 	
@@ -231,7 +233,7 @@ public class GUI_Designer extends JFrame {
 					disableSamplingDesignControls();
 					
 					// delete column "number of Plots" if it has been created before
-					if(model.findColumn("number of Plots") != -1){ // -1 --> column not found
+					if(model.findColumn("Number of Plots") != -1){ // -1 --> column not found
 						model.setColumnCount(1); // there is no way of removing a column from a DefaultTableModel directly; by setting the columnCount to 1 all other columns are removed.
 					}
 				}
@@ -239,9 +241,9 @@ public class GUI_Designer extends JFrame {
 				if((String)comboBox_SamplingDesign.getSelectedItem() == "Simple Random Sampling"){ 
 					disableSamplingDesignControls();
 					
-					// add column "number of Plots" only if it does not yet exist
-					if(model.findColumn("number of Plots")== -1){ // -1 --> column not found
-					model.addColumn("number of Plots");
+					// add column "Number of Plots" only if it does not yet exist
+					if(model.findColumn("Number of Plots")== -1){ // -1 --> column not found
+					model.addColumn("Number of Plots");
 					}
 				}
 				
@@ -256,18 +258,14 @@ public class GUI_Designer extends JFrame {
 					comboBox_StartingPoint.setEnabled(true);
 					lblStartingPoint.setEnabled(true);
 
-					// delete column "number of Plots" if it has been created before
-					if(model.findColumn("number of Plots") != -1){ // -1 --> column not found
+					// delete column "Number of Plots" if it has been created before
+					if(model.findColumn("Number of Plots") != -1){ // -1 --> column not found
 						model.setColumnCount(1); // there is no way of removing a column from a DefaultTableModel directly; by setting the columnCount to 1 all other columns are removed.
 					}
-
-
 				}
-
-
-				
 			}
 		});
+		
 		
 		// Combo Box "Starting Point"
 		comboBox_StartingPoint = new JComboBox();
@@ -297,7 +295,6 @@ public class GUI_Designer extends JFrame {
 					textField_Start_X.setEnabled(false);
 					textField_Start_Y.setEnabled(false);
 				}
-				
 			}
 		});
 		
@@ -436,13 +433,13 @@ public class GUI_Designer extends JFrame {
 					if(clusterShape == H_SHAPE){
 						numSubPlotsinHVerticalLine = Integer.parseInt(textField_H_numPlotsVertical.getText());
 						numSubPlotsinHhorizontalLine = Integer.parseInt(textField_H_numPlotsHorizontal.getText());
-						
+
 					}
 					// number of sub-plots per cluster (not for H-shaped clusters)
 					if(clusterShape != H_SHAPE){
 						numClusterSubPlots = Integer.parseInt(textField_NumSubPlotsPerCluster.getText());						
 					}
-					
+
 					// Distance between Cluster SubPlots
 					distBetweenSubPlots = Integer.parseInt(textFieldDistBetweenSubPlots.getText());
 
@@ -452,168 +449,25 @@ public class GUI_Designer extends JFrame {
 
 				// Methode erst hinterher aufrufen mit gesammelten Sachen drin --> Methodensignatur ändern
 				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
-				boolean samplingSuccessful = SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, numStrata, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots ); 
+				boolean samplingSuccessful = SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots ); 
 				if(samplingSuccessful){
 					JOptionPane.showMessageDialog(null, "output file successfully written");
 				}else{
 					JOptionPane.showMessageDialog(null, "some error occurred");
 				}
 
-
-
-				}
-			});
+			}
+		});
 		btnRunSampling.setBounds(4, 800, 122, 23);
 		contentPane.add(btnRunSampling);
 
-		// TextField "Grid Distance between points in X direction"
-		textField_DistX = new JTextField();
-		textField_DistX.setEnabled(false);
-		textField_DistX.setBounds(10, 536, 86, 20);
-		contentPane.add(textField_DistX);
-		textField_DistX.setColumns(10);
-
-		// TextField "Grid Distance between points in Y direction"
-		textField_DistY = new JTextField();
-		textField_DistY.setEnabled(false);
-		textField_DistY.setBounds(10, 590, 86, 20);
-		contentPane.add(textField_DistY);
-		textField_DistY.setColumns(10);
-				
-		// TextField "Start X"
-		textField_Start_X = new JTextField();
-		textField_Start_X.setEnabled(false);
-		textField_Start_X.setBounds(10, 703, 86, 20);
-		contentPane.add(textField_Start_X);
-		textField_Start_X.setColumns(10);
-
-		// TextField "Start Y"
-		textField_Start_Y = new JTextField();
-		textField_Start_Y.setEnabled(false);
-		textField_Start_Y.setColumns(10);
-		textField_Start_Y.setBounds(10, 759, 86, 20);
-		contentPane.add(textField_Start_Y);
-		
-		// TextField "NumSubPlotsPerCluster"
-		textField_NumSubPlotsPerCluster = new JTextField();
-		textField_NumSubPlotsPerCluster.setEnabled(false);
-		textField_NumSubPlotsPerCluster.setBounds(221, 536, 86, 20);
-		contentPane.add(textField_NumSubPlotsPerCluster);
-		textField_NumSubPlotsPerCluster.setColumns(10);
-		
-		// TextField "DistBetweenSubPlots"
-		textFieldDistBetweenSubPlots = new JTextField();
-		textFieldDistBetweenSubPlots.setEnabled(false);
-		textFieldDistBetweenSubPlots.setBounds(221, 590, 86, 20);
-		contentPane.add(textFieldDistBetweenSubPlots);
-		textFieldDistBetweenSubPlots.setColumns(10);
-		
-		// TextField "H_numPlotsVertical"
-		textField_H_numPlotsVertical = new JTextField();
-		textField_H_numPlotsVertical.setEnabled(false);
-		textField_H_numPlotsVertical.setBounds(221, 647, 86, 20);
-		contentPane.add(textField_H_numPlotsVertical);
-		textField_H_numPlotsVertical.setColumns(10);
-		
-		// TextField "H_numPlotsHorizontal"
-		textField_H_numPlotsHorizontal = new JTextField();
-		textField_H_numPlotsHorizontal.setEnabled(false);
-		textField_H_numPlotsHorizontal.setColumns(10);
-		textField_H_numPlotsHorizontal.setBounds(221, 731, 86, 20);
-		contentPane.add(textField_H_numPlotsHorizontal);
-		// End TextFields
-		//-----------------------------------------------------------------------------------------
-		
-		
-		
-		
-		//-----------------------------------------------------------------------------------------
-		// Labels
-		lblSelectedFile = new JLabel("No File selected yet");
-		lblSelectedFile.setBounds(92, 33, 448, 30);
-		contentPane.add(lblSelectedFile);
-		
-		lblSubplotsVerticalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
-		lblSubplotsVerticalLine.setEnabled(false);
-		lblSubplotsVerticalLine.setBounds(221, 602, 300, 50);
-		contentPane.add(lblSubplotsVerticalLine);
-		
-		lblClusterDesign = new JLabel("Cluster Design:");
-		lblClusterDesign.setEnabled(false);
-		lblClusterDesign.setBounds(217, 416, 200, 50);
-		contentPane.add(lblClusterDesign);
-
-		lblDistanceBetweenSubplots = new JLabel("Distance between sub-plots");
-		lblDistanceBetweenSubplots.setEnabled(false);
-		lblDistanceBetweenSubplots.setBounds(221, 554, 200, 50);
-		contentPane.add(lblDistanceBetweenSubplots);
-		
-		lblSubplotsPerCluster = new JLabel("Sub-plots per Cluster Plot");
-		lblSubplotsPerCluster.setEnabled(false);
-		lblSubplotsPerCluster.setBounds(221, 493, 200, 50);
-		contentPane.add(lblSubplotsPerCluster);
-		
-		lblStart_Y = new JLabel("Starting coordinate y:");
-		lblStart_Y.setEnabled(false);
-		lblStart_Y.setBounds(10, 716, 200, 50);
-		contentPane.add(lblStart_Y);
-
-		lblNewLabel = new JLabel("Selected File:");
-		lblNewLabel.setBounds(10, 33, 82, 30);
-		contentPane.add(lblNewLabel);
-		
-		lbl_SelectColumn = new JLabel("Choose one of the Shapefile Column Names for Strata Selection:");
-		lbl_SelectColumn.setBounds(10, 70, 450, 30);
-		contentPane.add(lbl_SelectColumn);
-		
-		lblChooseStrataFor = new JLabel("Choose Strata (one or more) for Sampling:");
-		lblChooseStrataFor.setBounds(10, 141, 336, 30);
-		contentPane.add(lblChooseStrataFor);
-		
-		lblSamplingDesign = new JLabel("Sampling Design: ");
-		lblSamplingDesign.setBounds(10, 373, 200, 30);
-		contentPane.add(lblSamplingDesign);
-		
-		lblDist_x = new JLabel("Distance between points x:");
-		lblDist_x.setEnabled(false);
-		lblDist_x.setBounds(10, 493, 200, 50);
-		contentPane.add(lblDist_x);
-		
-		lblStartingPoint = new JLabel("Starting point:");
-		lblStartingPoint.setEnabled(false);
-		lblStartingPoint.setBounds(10, 602, 200, 50);
-		contentPane.add(lblStartingPoint);
-		
-		lblNewLabel_3 = new JLabel("Cluster Sampling:");
-		lblNewLabel_3.setBounds(221, 373, 200, 30);
-		contentPane.add(lblNewLabel_3);
-		
-		lblStart_X = new JLabel("Starting coordinate x:");
-		lblStart_X.setEnabled(false);
-		lblStart_X.setBounds(10, 663, 200, 50);
-		contentPane.add(lblStart_X);
-		
-		lblDist_y = new JLabel("Distance between points y:");
-		lblDist_y.setEnabled(false);
-		lblDist_y.setBounds(10, 550, 200, 50);
-		contentPane.add(lblDist_y);
-		
-		lblSubplotsHorizontalLine = new JLabel("<html><body>Sub-plots per horizontal line (only H Clusters):<br> Note: Plots located both on horizontal AND vertical lines are considered to belong only to vertical lines</body></html>");
-		lblSubplotsHorizontalLine.setEnabled(false);
-		lblSubplotsHorizontalLine.setBounds(221, 680, 300, 50);
-		contentPane.add(lblSubplotsHorizontalLine);
-		// End Labels
-		//-----------------------------------------------------------------------------------------
-		
-		
-		
 		
 		//-----------------------------------------------------------------------------------------
 		// JTable stuff
 		// Step 1: model (describe data to be contained in table)
 //		model = new DefaultTableModel(new String[]{"name", "numPlots"},0); // initialize table with 0 rows
 		model = new DefaultTableModel();
-		model.addColumn("name");
+		model.addColumn("Stratum Name");
 		// (adding rows: this will be done dynamically by clicking on btnAdd)
 		// model.addRow(new String[]{"Hamburg", "30"}); // how to add rows
 		// Step 2: table
@@ -650,7 +504,6 @@ public class GUI_Designer extends JFrame {
 				for(String value : selectedValues){
 					model.addRow(new String[]{value, null}); // rows are added to the underlying TableModel, not the actual JTable !!!
 				}
-				
 			}
 		});
 		
@@ -670,15 +523,160 @@ public class GUI_Designer extends JFrame {
 					int row = table.getSelectedRow();
 					model.removeRow(row);
 				}
-				
-//				for(int i = 0; i < table.getSelectedRows().length; i++){
-//					model.removeRow(table.getSelectedRow());
-//				}
-				
 			}
 		});
 		
-	
+		
+		//-----------------------------------------------------------------------------------------
+				// TextFields
+				
+				// TextField "Grid Distance between points in X direction"
+				textField_DistX = new JTextField();
+				textField_DistX.setEnabled(false);
+				textField_DistX.setBounds(10, 536, 86, 20);
+				contentPane.add(textField_DistX);
+				textField_DistX.setColumns(10);
+
+				// TextField "Grid Distance between points in Y direction"
+				textField_DistY = new JTextField();
+				textField_DistY.setEnabled(false);
+				textField_DistY.setBounds(10, 590, 86, 20);
+				contentPane.add(textField_DistY);
+				textField_DistY.setColumns(10);
+						
+				// TextField "Start X"
+				textField_Start_X = new JTextField();
+				textField_Start_X.setEnabled(false);
+				textField_Start_X.setBounds(10, 703, 86, 20);
+				contentPane.add(textField_Start_X);
+				textField_Start_X.setColumns(10);
+
+				// TextField "Start Y"
+				textField_Start_Y = new JTextField();
+				textField_Start_Y.setEnabled(false);
+				textField_Start_Y.setColumns(10);
+				textField_Start_Y.setBounds(10, 759, 86, 20);
+				contentPane.add(textField_Start_Y);
+				
+				// TextField "NumSubPlotsPerCluster"
+				textField_NumSubPlotsPerCluster = new JTextField();
+				textField_NumSubPlotsPerCluster.setEnabled(false);
+				textField_NumSubPlotsPerCluster.setBounds(221, 536, 86, 20);
+				contentPane.add(textField_NumSubPlotsPerCluster);
+				textField_NumSubPlotsPerCluster.setColumns(10);
+				
+				// TextField "DistBetweenSubPlots"
+				textFieldDistBetweenSubPlots = new JTextField();
+				textFieldDistBetweenSubPlots.setEnabled(false);
+				textFieldDistBetweenSubPlots.setBounds(221, 590, 86, 20);
+				contentPane.add(textFieldDistBetweenSubPlots);
+				textFieldDistBetweenSubPlots.setColumns(10);
+				
+				// TextField "H_numPlotsVertical"
+				textField_H_numPlotsVertical = new JTextField();
+				textField_H_numPlotsVertical.setEnabled(false);
+				textField_H_numPlotsVertical.setBounds(221, 647, 86, 20);
+				contentPane.add(textField_H_numPlotsVertical);
+				textField_H_numPlotsVertical.setColumns(10);
+				
+				// TextField "H_numPlotsHorizontal"
+				textField_H_numPlotsHorizontal = new JTextField();
+				textField_H_numPlotsHorizontal.setEnabled(false);
+				textField_H_numPlotsHorizontal.setColumns(10);
+				textField_H_numPlotsHorizontal.setBounds(221, 731, 86, 20);
+				contentPane.add(textField_H_numPlotsHorizontal);
+				
+				// TextField "BuffferSize"
+				textField_BufferSize = new JTextField();
+				textField_BufferSize.setText("9");
+				textField_BufferSize.setColumns(10);
+				textField_BufferSize.setBounds(449, 431, 86, 20);
+				contentPane.add(textField_BufferSize);
+				// End TextFields
+				//-----------------------------------------------------------------------------------------
+				
+				
+				//-----------------------------------------------------------------------------------------
+				// Labels
+				lblSelectedFile = new JLabel("No File selected yet");
+				lblSelectedFile.setBounds(92, 33, 448, 30);
+				contentPane.add(lblSelectedFile);
+				
+				lblSubplotsVerticalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
+				lblSubplotsVerticalLine.setEnabled(false);
+				lblSubplotsVerticalLine.setBounds(221, 602, 300, 50);
+				contentPane.add(lblSubplotsVerticalLine);
+				
+				lblClusterDesign = new JLabel("Cluster Design:");
+				lblClusterDesign.setEnabled(false);
+				lblClusterDesign.setBounds(217, 416, 200, 50);
+				contentPane.add(lblClusterDesign);
+
+				lblDistanceBetweenSubplots = new JLabel("Distance between sub-plots");
+				lblDistanceBetweenSubplots.setEnabled(false);
+				lblDistanceBetweenSubplots.setBounds(221, 554, 200, 50);
+				contentPane.add(lblDistanceBetweenSubplots);
+				
+				lblSubplotsPerCluster = new JLabel("Sub-plots per Cluster Plot");
+				lblSubplotsPerCluster.setEnabled(false);
+				lblSubplotsPerCluster.setBounds(221, 493, 200, 50);
+				contentPane.add(lblSubplotsPerCluster);
+				
+				lblStart_Y = new JLabel("Starting coordinate y:");
+				lblStart_Y.setEnabled(false);
+				lblStart_Y.setBounds(10, 716, 200, 50);
+				contentPane.add(lblStart_Y);
+
+				lblNewLabel = new JLabel("Selected File:");
+				lblNewLabel.setBounds(10, 33, 82, 30);
+				contentPane.add(lblNewLabel);
+				
+				lbl_SelectColumn = new JLabel("Choose one of the Shapefile Column Names for Strata Selection:");
+				lbl_SelectColumn.setBounds(10, 70, 450, 30);
+				contentPane.add(lbl_SelectColumn);
+				
+				lblChooseStrataFor = new JLabel("Choose Strata (one or more) for Sampling:");
+				lblChooseStrataFor.setBounds(10, 141, 336, 30);
+				contentPane.add(lblChooseStrataFor);
+				
+				lblSamplingDesign = new JLabel("Sampling Design: ");
+				lblSamplingDesign.setBounds(10, 373, 200, 30);
+				contentPane.add(lblSamplingDesign);
+				
+				lblDist_x = new JLabel("Distance between points x:");
+				lblDist_x.setEnabled(false);
+				lblDist_x.setBounds(10, 493, 200, 50);
+				contentPane.add(lblDist_x);
+				
+				lblStartingPoint = new JLabel("Starting point:");
+				lblStartingPoint.setEnabled(false);
+				lblStartingPoint.setBounds(10, 602, 200, 50);
+				contentPane.add(lblStartingPoint);
+				
+				lblNewLabel_3 = new JLabel("Cluster Sampling:");
+				lblNewLabel_3.setBounds(221, 373, 200, 30);
+				contentPane.add(lblNewLabel_3);
+				
+				lblStart_X = new JLabel("Starting coordinate x:");
+				lblStart_X.setEnabled(false);
+				lblStart_X.setBounds(10, 663, 200, 50);
+				contentPane.add(lblStart_X);
+				
+				lblDist_y = new JLabel("Distance between points y:");
+				lblDist_y.setEnabled(false);
+				lblDist_y.setBounds(10, 550, 200, 50);
+				contentPane.add(lblDist_y);
+				
+				lblSubplotsHorizontalLine = new JLabel("<html><body>Sub-plots per horizontal line (only H Clusters):<br> Note: Plots located both on horizontal AND vertical lines are considered to belong only to vertical lines</body></html>");
+				lblSubplotsHorizontalLine.setEnabled(false);
+				lblSubplotsHorizontalLine.setBounds(221, 680, 300, 50);
+				contentPane.add(lblSubplotsHorizontalLine);
+				
+				lblBufferSize = new JLabel("<html><body>Plot Radius<br>(minimum Distance <br>to Stratum boundary):</body></html>");
+				lblBufferSize.setBounds(449, 376, 229, 53);
+				contentPane.add(lblBufferSize);
+				// End Labels
+				//-----------------------------------------------------------------------------------------
 	}
 	
 	
