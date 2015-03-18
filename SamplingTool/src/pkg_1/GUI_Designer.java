@@ -226,22 +226,23 @@ public class GUI_Designer extends JFrame {
 		contentPane.add(comboBox_SamplingDesign);
 		comboBox_SamplingDesign.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				/*
-				 * Sampling-Logik in GUI umsetzen: bedingte Anzeige von Komponenten:
-				 * 
-				 * - TextField "Number of Plots" soll nur angezeigt werden bei Simple Random Sampling
-				 * - Eingabeparameter "Dist_X", "Dist_Y" und "Starting Point" sollen nur bei systematic Sampling angezeigt werden
-				 * 
-				 * --> zum Hinzufügen muss ich repaint() aufrufen, geht aber nicht von hier aus --> Methode gekapselt und ausgelagert
-				 * --> wenn ich die Sampling-Methode ändere, bleiben die Kompnenten der anderen Option erhalten --> wie gehen die wieder weg?
-				 */
 				
-				if((String)comboBox_SamplingDesign.getSelectedItem() == null){ // direkter Test auf "null" --> sieht irgendwie falsch aus
+				if((String)comboBox_SamplingDesign.getSelectedItem() == null){ 
 					disableSamplingDesignControls();
+					
+					// delete column "number of Plots" if it has been created before
+					if(model.findColumn("number of Plots") != -1){ // -1 --> column not found
+						model.setColumnCount(1); // there is no way of removing a column from a DefaultTableModel directly; by setting the columnCount to 1 all other columns are removed.
+					}
 				}
-				if((String)comboBox_SamplingDesign.getSelectedItem() == "Simple Random Sampling"){
-					// disable previously enabled Sampling Design Controls, if systematic Sampling option had been selected before
+				
+				if((String)comboBox_SamplingDesign.getSelectedItem() == "Simple Random Sampling"){ 
 					disableSamplingDesignControls();
+					
+					// add column "number of Plots" only if it does not yet exist
+					if(model.findColumn("number of Plots")== -1){ // -1 --> column not found
+					model.addColumn("number of Plots");
+					}
 				}
 				
 				if((String)comboBox_SamplingDesign.getSelectedItem() == "Systematic Sampling"){
@@ -254,10 +255,15 @@ public class GUI_Designer extends JFrame {
 					lblDist_y.setEnabled(true);
 					comboBox_StartingPoint.setEnabled(true);
 					lblStartingPoint.setEnabled(true);
-					
-				
+
+					// delete column "number of Plots" if it has been created before
+					if(model.findColumn("number of Plots") != -1){ // -1 --> column not found
+						model.setColumnCount(1); // there is no way of removing a column from a DefaultTableModel directly; by setting the columnCount to 1 all other columns are removed.
 					}
-					
+
+
+				}
+
 
 				
 			}
@@ -377,8 +383,8 @@ public class GUI_Designer extends JFrame {
 				numStrata = model.getRowCount();
 				selectedStrata = new String[numStrata];
 				// read stratum names from JTable
-				for(int i = 0; i < numStrata; i++){ // iterate over rows
-					selectedStrata[i] = (String) model.getValueAt(i, 0); // Spalte "Name"
+				for(int i = 0; i < numStrata; i++){ // iterate over rows containing stratum names
+					selectedStrata[i] = (String) model.getValueAt(i, 0); // i = row; 0 = "name" column
 				}
 
 				// Sampling Design params
@@ -387,7 +393,7 @@ public class GUI_Designer extends JFrame {
 					// Number of plots already specified in Array "numPlotsToBeSampled"
 					numPlotsToBeSampled = new int[numStrata];
 					for(int i = 0; i < numStrata; i++){ // iterate over rows
-						numPlotsToBeSampled[i] = Integer.parseInt((String)model.getValueAt(i, 1)); // Spalte "numPlots"
+						numPlotsToBeSampled[i] = Integer.parseInt((String)model.getValueAt(i, 1)); // i = row; 1 = "number of Plots" column
 					}
 				}else if ((String)comboBox_SamplingDesign.getSelectedItem()=="Systematic Sampling"){
 					samplingDesign = SYSTEMATIC_SAMPLING;
@@ -605,7 +611,9 @@ public class GUI_Designer extends JFrame {
 		//-----------------------------------------------------------------------------------------
 		// JTable stuff
 		// Step 1: model (describe data to be contained in table)
-		model = new DefaultTableModel(new String[]{"name", "numPlots"},0); // initialize table with 0 rows
+//		model = new DefaultTableModel(new String[]{"name", "numPlots"},0); // initialize table with 0 rows
+		model = new DefaultTableModel();
+		model.addColumn("name");
 		// (adding rows: this will be done dynamically by clicking on btnAdd)
 		// model.addRow(new String[]{"Hamburg", "30"}); // how to add rows
 		// Step 2: table
