@@ -444,12 +444,15 @@ public class GUI_Designer extends JFrame {
 					distBetweenSubPlots = Integer.parseInt(textFieldDistBetweenSubPlots.getText());
 
 				}else clusterSampling = CLUSTER_SAMPLING_NO; // use CLUSTER_SAMPLING_NO as default option, unless CLUSTER_SAMPLING_YES is explicitly specified
+				
+				// size of the negative Buffer to be applied to strata polygons
+				double bufferSize = Double.parseDouble(textField_BufferSize.getText());
 				// Ende Samplingparameter
 				//----------------------------------------
 
 				// Methode erst hinterher aufrufen mit gesammelten Sachen drin --> Methodensignatur ändern
 				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
-				boolean samplingSuccessful = SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots ); 
+				boolean samplingSuccessful = SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize ); 
 				if(samplingSuccessful){
 					JOptionPane.showMessageDialog(null, "output file successfully written");
 				}else{

@@ -42,144 +42,12 @@ import com.vividsolutions.jts.geom.Polygon;
 
 public class SamplingFunctionalityMethods {
 	
-
-	/**
-	 * This method takes a Shapefile as a File object as input parameter and returns
-	 * the columns of the Shapefile as a String[] array. 
-	 * @param inputFile File object. Must be a Shapefile
-	 * @return the Shapefile column names as String[] array
-	 * @throws Exception
-	 */
-	public static String[] getSHPColNames(File inputFile) throws Exception {
-		// Access SHP Column Names (GeoTools logic): Input File --> DataStore --> FeatureType (Anzahl und Art der Spalten in Attribute Table) --> AttributeDescriptors --> getLocalName()
-		FileDataStore dataStore = FileDataStoreFinder.getDataStore(inputFile);
-		SimpleFeatureType simpleFeatureType = dataStore.getSchema();
-		List<AttributeDescriptor> attributeDescriptors = simpleFeatureType.getAttributeDescriptors(); // gibt noch andere Möglichkeiten, an die Spaltennamen zu kommen, zb direkt über die features selbst
-		String[] columnNames = new String[simpleFeatureType.getAttributeCount()];
-		for(int i = 0; i < attributeDescriptors.size(); i++){
-			columnNames[i] = attributeDescriptors.get(i).getLocalName();
-		}
-		return columnNames;
-		
-	}
-	
-	/**
-	 * Returns the values (in the intended use case of this method: feature names, eg strata names) contained in the specified column
-	 * @param inputFile
-	 * @param strataColumn
-	 * @return
-	 * @throws Exception
-	 */
-	public static ArrayList<String> getColumnValues (File inputFile, String strataColumn) throws Exception{
-		// initialize output ArrayList
-		ArrayList<String> values = new ArrayList<String>();
-		// get all features contained in the Shapefile
-		ArrayList<SimpleFeature> features = getFeatures(inputFile);
-		// iterate over features and extract the specified column´s attribute values 
-		for(SimpleFeature feature : features){
-			values.add((String)feature.getAttribute(strataColumn));
-		}
-		// sort values alphabetically 
-		Collections.sort(values);
-		// remove duplicate values
-		for(int i = 0; i < values.size() -1 ; i++){
-			// wenn es einen nächsten gibt, anschauen
-			while(true){
-				// if there is a next element in the ArrayList...
-				if(i+1 <= values.size() -1){ // i+1 is the index for the value following the current value. We must make sure that it is not ouf of bounds (ie, pointing to an index not contained in the ArrayList)
-					if(values.get(i).equals(values.get(i+1))){
-						values.remove(i+1);
-					}else{
-						break;
-					}
-				}else{
-					break;
-
-				}
-			}
-		}
-		return values;
-	}
-	
-	
-	
-	/**
-	 * Convenience Method to get all features of a Shapefile nicely accessible in an ArrayList object
-	 * --> check for possible performance losses, as FeatureCollection does not load everything into memory
-	 * @param inputFile
-	 * @return
-	 * @throws Exception
-	 */
-	public static ArrayList<SimpleFeature> getFeatures(File inputFile) throws Exception{ 
-		// TODO klären: wie ist das, wenn mehrere Polygone gleich heißen? (EIN Stratum besteht aus mehreren Polygonen, alle sollen besampelt werden)
-		// Access Features in an SHP Column (GeoTools logic): Input File --> DataStore --> FeatureSource --> FeatureCollection --> Iterator
-		FileDataStore dataStore = FileDataStoreFinder.getDataStore(inputFile);
-		SimpleFeatureSource featureSource = dataStore.getFeatureSource(); // wird benötigt, um an einzelne Features ranzukommen (Feature = Zeile in SHP Attribute Table)
-		final SimpleFeatureCollection featureCollection = featureSource.getFeatures(); // wieso muss die final sein?		
-		SimpleFeatureIterator iterator = featureCollection.features(); // an die Features(=Zeilen in SHP attribute table) kommt man, indem man über die FeatureCollection iteriert 
-		ArrayList<SimpleFeature> features = new ArrayList<SimpleFeature>(); //
-		try {
-			while( iterator.hasNext()  ){
-				SimpleFeature feature = iterator.next();
-				features.add(feature);
-				
-			}
-		}
-		finally {
-			iterator.close(); // prevents memory leaks or data loss or whatever
-		}
-		return features;
-	}
-	
-	
-	
-	/**
-	 * Derive UTM Zone for a given longitude value.
-	 * @param longitude
-	 * @return
-	 */
-	public static int long2UTM(double longitude){
-		// TODO Ausnahmen: Norwegen etc. --> also auch abhängig von Latitude --> evtl behandeln --> start: welche Zonen sind überhaupt irregulär?
-		int utmZone = (int)Math.floor(((longitude + 180) / 6) +1);
-		if(utmZone > 60) utmZone = utmZone % 60; // if input longitude is > 180 for some reason (and output UTM zone is > 60 then)
-		return utmZone;
-	}
-	
-	
-	/**
-	 * Convenience method to convert processed data from UTM projection to geographic LonLat projection  
-	 */
-	public static void UTM2LonLat(ArrayList<Plot> plots) throws Exception{
-		
-		// iterate over plots and convert their Point property to geographic LonLat
-		for(Plot plot : plots){
-			
-			// get the plot's current CRS 
-			CoordinateReferenceSystem sourceCRS = plot.getCRS();
-			
-			// get Point property (UTM projection at this stage)
-			Point plotPoint = plot.getPoint();
-			
-			// convert Point property to LonLat
-			Point plotLatLon = (Point)JTS.toGeographic(plotPoint, sourceCRS);
-			
-			// save changed Point property
-			plot.setPoint(plotLatLon);
-			
-			// change plot's CRS property (just to work properly, this property should not be needed any more at this stage of the process)
-			plot.setCRS(org.geotools.referencing.crs.DefaultGeographicCRS.WGS84);
-			
-		}
-
-	}
-	
-	
 	/**
 	 * This method is responsible for the entire Sampling process.
 	 * It takes the sampling params from the GUI, implements the sampling logic
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
-	public static boolean runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots ){
+	public static boolean runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize ){
 		
 		// get all features in the shapefile
 		try {
@@ -187,6 +55,7 @@ public class SamplingFunctionalityMethods {
 		
 		// filter selected features
 			ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
+			
 			for(int i = 0; i < selectedStrata.length; i++){ // evtl Zeit sparen, indem ich hier optimiert vorgehe
 				for(SimpleFeature currentFeature : allFeatures){ 
 					if(currentFeature.getAttribute(sampleColumn).toString().equals(selectedStrata[i])){
@@ -209,36 +78,40 @@ public class SamplingFunctionalityMethods {
 		 */
 			
 			// iterate over selectedFeatures and merge Geometries using union() if they have the same name (eg, belong to the same stratum)
-			for(int i = 0; i < selectedFeatures.size()-1; i++){ // iterate until penultimate element so that there is always a following element (avoid ArrayIndexOutOfBoundsException)
-				// while the next feature belongs to the same stratum as the current feature --> merge Geometries
-				String nameCurrentFeature = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
-				while(true){
-					if(i+1 <=  selectedFeatures.size()-1){ // avoid IndexOutOfBoundsException while looking at the next element 
-						String nameNextFeature = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
+			if(selectedFeatures.size() > selectedStrata.length){ // perform this step only if there actually is at least one Multi-Feature stratum
+				for(int i = 0; i < selectedFeatures.size()-1; i++){ // iterate until penultimate element so that there is always a following element (avoid ArrayIndexOutOfBoundsException)
+					// while the next feature belongs to the same stratum as the current feature --> merge Geometries
+					String nameCurrentFeature = selectedFeatures.get(i).getAttribute(sampleColumn).toString();
+					while(true){
+						if(i+1 <=  selectedFeatures.size()-1){ // avoid IndexOutOfBoundsException while looking at the next element 
+							String nameNextFeature = selectedFeatures.get(i+1).getAttribute(sampleColumn).toString();
 
-						if(nameCurrentFeature.equals(nameNextFeature)){
-							// extract Geometries from both Features
-							Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
-							Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
+							if(nameCurrentFeature.equals(nameNextFeature)){
+								// extract Geometries from both Features
+								Geometry geom1 = (Geometry) selectedFeatures.get(i).getAttribute("the_geom");
+								Geometry geom2 = (Geometry) selectedFeatures.get(i+1).getAttribute("the_geom");
 
-							// merge Geometries using union()
-							// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
-							Geometry geomMerge = geom1.union(geom2);
+								// merge Geometries using union()
+								// geomMerge may be of type Polygon or MultiPolygon, depending on whether the merged Geometries are adjacent to each other or not
+								Geometry geomMerge = geom1.union(geom2);
 
-							// set as Geometry for feature i
-							// works also for Polygon objects although column type is specified as MultiPolygon 
-							selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
+								// set as Geometry for feature i
+								// works also for Polygon objects although column type is specified as MultiPolygon 
+								selectedFeatures.get(i).setAttribute("the_geom", geomMerge);
 
-							// remove feature i+1 from ArrayList
-							selectedFeatures.remove(i+1);
+								// remove feature i+1 from ArrayList
+								selectedFeatures.remove(i+1);
+							}else{
+								break;
+							}
 						}else{
 							break;
 						}
-					}else{
-						break;
 					}
 				}
 			}
+			
+			
 
 			
 		// reproject selected features to UTM
@@ -246,25 +119,29 @@ public class SamplingFunctionalityMethods {
 			CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
 			
 			
-			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here)
+			// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here),
+			// apply a negative buffer to the Geometries 
 			// and add converted Geometries to ArrayList
 			// --> this CRS transformation has to be done in a loop because each feature possibly needs to be transformed to its own CRS (different UTM zones) according to its position
 			ArrayList<Stratum> strataUTM= new ArrayList<Stratum>();
 			
-			for(SimpleFeature feature : selectedFeatures){
-				CoordinateReferenceSystem targetCRS = getTargetCRS(feature); // targetCRS:in UTM projection
+			for(SimpleFeature currentFeature : selectedFeatures){
+				CoordinateReferenceSystem targetCRS = getTargetCRS(currentFeature); // targetCRS:in UTM projection
 				// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
 				MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
 				// get feature Geometry
-				Geometry sourceGeometry = (Geometry) feature.getAttribute( "the_geom" );
+				Geometry sourceGeometry = (Geometry) currentFeature.getAttribute( "the_geom" );
 				// convert Geometry to target CRS
 				Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
 				
+				// apply negative buffer to targetGeometry before creating Stratum object with it and starting the actual sampling process 
+				Geometry bufferGeometry = targetGeometry.buffer(-bufferSize);
 				
 				// make a Stratum object out of the targetGeometry that holds additional information (CRS, stratumName )
-				Stratum stratum = new Stratum(targetGeometry, targetCRS, (String)feature.getAttribute(sampleColumn));
+				Stratum stratum = new Stratum(bufferGeometry, targetCRS, (String)currentFeature.getAttribute(sampleColumn));
 				strataUTM.add(stratum);
 			}
+			
 			
 			
 			// create ArrayList to store and append output plots (ArrayList is a more convenient type to append data to than a regular array)
@@ -399,10 +276,136 @@ public class SamplingFunctionalityMethods {
 		// if things went not so well (this statement is never reached if everything works fine)
 		return false;
 	}
+
+	/**
+	 * This method takes a Shapefile as a File object as input parameter and returns
+	 * the columns of the Shapefile as a String[] array. 
+	 * @param inputFile File object. Must be a Shapefile
+	 * @return the Shapefile column names as String[] array
+	 * @throws Exception
+	 */
+	public static String[] getSHPColNames(File inputFile) throws Exception {
+		// Access SHP Column Names (GeoTools logic): Input File --> DataStore --> FeatureType (Anzahl und Art der Spalten in Attribute Table) --> AttributeDescriptors --> getLocalName()
+		FileDataStore dataStore = FileDataStoreFinder.getDataStore(inputFile);
+		SimpleFeatureType simpleFeatureType = dataStore.getSchema();
+		List<AttributeDescriptor> attributeDescriptors = simpleFeatureType.getAttributeDescriptors(); // gibt noch andere Möglichkeiten, an die Spaltennamen zu kommen, zb direkt über die features selbst
+		String[] columnNames = new String[simpleFeatureType.getAttributeCount()];
+		for(int i = 0; i < attributeDescriptors.size(); i++){
+			columnNames[i] = attributeDescriptors.get(i).getLocalName();
+		}
+		return columnNames;
+		
+	}
+	
+	/**
+	 * Returns the values (in the intended use case of this method: feature names, eg strata names) contained in the specified column
+	 * @param inputFile
+	 * @param strataColumn
+	 * @return
+	 * @throws Exception
+	 */
+	public static ArrayList<String> getColumnValues (File inputFile, String strataColumn) throws Exception{
+		// initialize output ArrayList
+		ArrayList<String> values = new ArrayList<String>();
+		// get all features contained in the Shapefile
+		ArrayList<SimpleFeature> features = getFeatures(inputFile);
+		// iterate over features and extract the specified column´s attribute values 
+		for(SimpleFeature feature : features){
+			values.add((String)feature.getAttribute(strataColumn));
+		}
+		// sort values alphabetically 
+		Collections.sort(values);
+		// remove duplicate values
+		for(int i = 0; i < values.size() -1 ; i++){
+			// wenn es einen nächsten gibt, anschauen
+			while(true){
+				// if there is a next element in the ArrayList...
+				if(i+1 <= values.size() -1){ // i+1 is the index for the value following the current value. We must make sure that it is not ouf of bounds (ie, pointing to an index not contained in the ArrayList)
+					if(values.get(i).equals(values.get(i+1))){
+						values.remove(i+1);
+					}else{
+						break;
+					}
+				}else{
+					break;
+
+				}
+			}
+		}
+		return values;
+	}
 	
 	
 	
+	/**
+	 * Convenience Method to get all features of a Shapefile nicely accessible in an ArrayList object
+	 * --> check for possible performance losses, as FeatureCollection does not load everything into memory
+	 * @param inputFile
+	 * @return
+	 * @throws Exception
+	 */
+	public static ArrayList<SimpleFeature> getFeatures(File inputFile) throws Exception{ 
+		// TODO klären: wie ist das, wenn mehrere Polygone gleich heißen? (EIN Stratum besteht aus mehreren Polygonen, alle sollen besampelt werden)
+		// Access Features in an SHP Column (GeoTools logic): Input File --> DataStore --> FeatureSource --> FeatureCollection --> Iterator
+		FileDataStore dataStore = FileDataStoreFinder.getDataStore(inputFile);
+		SimpleFeatureSource featureSource = dataStore.getFeatureSource(); // wird benötigt, um an einzelne Features ranzukommen (Feature = Zeile in SHP Attribute Table)
+		final SimpleFeatureCollection featureCollection = featureSource.getFeatures(); // wieso muss die final sein?		
+		SimpleFeatureIterator iterator = featureCollection.features(); // an die Features(=Zeilen in SHP attribute table) kommt man, indem man über die FeatureCollection iteriert 
+		ArrayList<SimpleFeature> features = new ArrayList<SimpleFeature>(); //
+		try {
+			while( iterator.hasNext()  ){
+				SimpleFeature feature = iterator.next();
+				features.add(feature);
+				
+			}
+		}
+		finally {
+			iterator.close(); // prevents memory leaks or data loss or whatever
+		}
+		return features;
+	}
 	
+	
+	
+	/**
+	 * Derive UTM Zone for a given longitude value.
+	 * @param longitude
+	 * @return
+	 */
+	public static int long2UTM(double longitude){
+		// TODO Ausnahmen: Norwegen etc. --> also auch abhängig von Latitude --> evtl behandeln --> start: welche Zonen sind überhaupt irregulär?
+		int utmZone = (int)Math.floor(((longitude + 180) / 6) +1);
+		if(utmZone > 60) utmZone = utmZone % 60; // if input longitude is > 180 for some reason (and output UTM zone is > 60 then)
+		return utmZone;
+	}
+	
+	
+	/**
+	 * Convenience method to convert processed data from UTM projection to geographic LonLat projection  
+	 */
+	public static void UTM2LonLat(ArrayList<Plot> plots) throws Exception{
+		
+		// iterate over plots and convert their Point property to geographic LonLat
+		for(Plot plot : plots){
+			
+			// get the plot's current CRS 
+			CoordinateReferenceSystem sourceCRS = plot.getCRS();
+			
+			// get Point property (UTM projection at this stage)
+			Point plotPoint = plot.getPoint();
+			
+			// convert Point property to LonLat
+			Point plotLatLon = (Point)JTS.toGeographic(plotPoint, sourceCRS);
+			
+			// save changed Point property
+			plot.setPoint(plotLatLon);
+			
+			// change plot's CRS property (just to work properly, this property should not be needed any more at this stage of the process)
+			plot.setCRS(org.geotools.referencing.crs.DefaultGeographicCRS.WGS84);
+			
+		}
+
+	}
 	
 	
 	
@@ -520,7 +523,7 @@ public class SamplingFunctionalityMethods {
 			
 
 			// check if Point inside stratum (not just within bbox), create Plot and add Plot to output ArrayList
-			if(point.within(stratumGeometry.buffer(-500.0))){
+			if(point.within(stratumGeometry)){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), plotNr);
 				output.add(plot);
@@ -550,7 +553,7 @@ public class SamplingFunctionalityMethods {
 	 *   generiert Punkte in UTM-Projektion, numeriert sie und benennt X- und Y-Spalte (in Java wahrsch. nicht notwendig)
 	 * - shape = SpatialPolygonsDataFrame created through import of shapefile -> inventory area (UTM projection) 
 	 */
-	public static Point[] simpleRandomSampling(File file, String column,  String selectedPolygon, int numPlots) throws Exception{ // TODO param list erweitern
+	public static Point[] simpleRandomSampling(File file, String column,  String selectedPolygon, int numPlots ) throws Exception{ // TODO param list erweitern
 		// TODO klären: wie ist das, wenn mehrere Polygone gleich heißen? (EIN Stratum besteht aus mehreren Polygonen, alle sollen besampelt werden)
 		
 		SimpleFeature samplePolygon = null; // Initialize to "null" and then search it in while loop
@@ -645,7 +648,7 @@ public class SamplingFunctionalityMethods {
 	}
 
 	
-	public static ArrayList<Plot> systematicSampling(Stratum stratum, Point startPoint, int gridDistX, int  gridDistY){
+	public static ArrayList<Plot> systematicSampling(Stratum stratum, Point startPoint, int gridDistX, int  gridDistY ){
 		
 		// initialize output ArrayList
 		ArrayList<Plot> output = new ArrayList<Plot>();
@@ -783,7 +786,7 @@ public class SamplingFunctionalityMethods {
 	 * @param numClusterSubPlots
 	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
 	 */
-	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
+	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum ){
 		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
 
 		// iterate over seed points
@@ -884,7 +887,7 @@ public class SamplingFunctionalityMethods {
 	 * @param stratum
 	 * @return
 	 */
-	public static ArrayList<Plot> create_H_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, Stratum stratum){
+	public static ArrayList<Plot> create_H_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, Stratum stratum ){
 		
 		// initialize output ArrayList
 		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
