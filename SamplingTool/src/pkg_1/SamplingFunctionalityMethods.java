@@ -1420,21 +1420,108 @@ public class SamplingFunctionalityMethods {
 		return outputPlots;
 	}
 
+/**
+ * creates rotated Square clusters. As for now, this method only creates clusters containing 4 sub-Plots.
+ * @param clusterSeedPoints
+ * @param distBetweenSubPlots
+ * @param stratum
+ * @return
+ */
+public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, Stratum stratum){
+
+		// initialize output ArrayList
+		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
+
+		// three objects to be used repeatedly inside the loop
+		GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
+		Coordinate coord;
+		Point point;
+		
+		// calculate Distance between cluster Plots and seed point (applying Pythagorean theorem)
+		double distFromSeedPoint = distBetweenSubPlots / Math.sqrt(2.0);
+		
+		// iterate over seed points
+		for(Plot seedPoint : clusterSeedPoints){
+
+			// use seedPoint.plotNr as clusterNr
+			int clusterNr = seedPoint.getPlotNr();
+			int subPlotNr = 1;
+
+			// extract coords from seedPoint in order to create cluster Plots using them
+			double x = seedPoint.getPoint().getCoordinate().x;
+			double y = seedPoint.getPoint().getCoordinate().y;
+
+			// create cluster Plots clockwise starting from the northern Plot 
+			
+			// 1. Plot
+			// create Point using GeometryFactory
+			coord = new Coordinate( x, (y + distFromSeedPoint) );// only Y coord affected as we move north
+			point = geometryFactory.createPoint( coord );
+
+			// check if Point inside stratum, create Plot and add Plot to output ArrayList
+			if(point.within(stratum.getGeometry())){
+				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				outputPlots.add(plot);
+				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+			}
+			
+			// 2. Plot
+			// create Point using GeometryFactory
+			coord = new Coordinate( (x + distFromSeedPoint ), y );// only X coord affected as we move east
+			point = geometryFactory.createPoint( coord );
+
+			// check if Point inside stratum, create Plot and add Plot to output ArrayList
+			if(point.within(stratum.getGeometry())){
+				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				outputPlots.add(plot);
+				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+			}
+
+			// 3. Plot
+			// create Point using GeometryFactory
+			coord = new Coordinate( x, (y - distFromSeedPoint) );// only Y coord affected as we move south
+			point = geometryFactory.createPoint( coord );
+
+			// check if Point inside stratum, create Plot and add Plot to output ArrayList
+			if(point.within(stratum.getGeometry())){
+				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				outputPlots.add(plot);
+				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+			}
+
+			// 4. Plot
+			// create Point using GeometryFactory
+			coord = new Coordinate( (x - distFromSeedPoint ), y );// only Y coord affected as we move west
+			point = geometryFactory.createPoint( coord );
+
+			// check if Point inside stratum, create Plot and add Plot to output ArrayList
+			if(point.within(stratum.getGeometry())){
+				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				outputPlots.add(plot);
+				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
+			}
+
+		}
+		return outputPlots;
+}
 
 
-	
-	
-	
-	/**
-	 * Get output file. This method shows a saveFileDialog etc.
-	 * 
-	 * @return
-	 */
-	private static File getFile() throws Exception{
-		// Problem hier: Methode muss File-Objekt zurückgeben. Wenn User den SaveFileDialog abbricht, ohne eine Datei anzugeben,
-		// muss ich hier nach der Programmierlogik eine Exception werfen
-		// TODO automatically add ".csv" file extension
-		JFileChooser saveFileDialog = new JFileChooser(); // JFileChooser kommt aus javax.swing und hat nichts mit GeoTools zu tun 
+
+
+/**
+ * Get output file. This method shows a saveFileDialog etc.
+ * 
+ * @return
+ */
+private static File getFile() throws Exception{
+	// Problem hier: Methode muss File-Objekt zurückgeben. Wenn User den SaveFileDialog abbricht, ohne eine Datei anzugeben,
+	// muss ich hier nach der Programmierlogik eine Exception werfen
+	// TODO automatically add ".csv" file extension
+	JFileChooser saveFileDialog = new JFileChooser(); // JFileChooser kommt aus javax.swing und hat nichts mit GeoTools zu tun 
 		//    FileNameExtensionFilter filter = new FileNameExtensionFilter(
 		//        "CSV files", "csv");
 		//    chooser.setFileFilter(filter);
