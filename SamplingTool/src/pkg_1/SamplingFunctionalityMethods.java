@@ -148,8 +148,6 @@ public class SamplingFunctionalityMethods {
 
 		// iterate over converted Geometries and sample plots according to input params
 		for(int i = 0; i < strataUTM.size(); i++){
-			// sample plots
-
 
 			// muss man diese if-Verzweigungen IN den for loop reinschreiben oder kann man das irgendwie trennen?
 			// --> ich könnte erst die Samplingart bestimmen und dann
@@ -158,52 +156,36 @@ public class SamplingFunctionalityMethods {
 			// CRS iterieren und in jedes auf unterschiedlich Weise Punkte hineinsampeln
 
 
-			// hier die Samplinglogik
-			// simple random sample
+			//-------------------------------------------------------------------------------------------------------------
+			// Sampling logic
+			
+			ArrayList<Plot> clusterSeedPoints = null; // must initialize variable outside if block so that it is visible in other if blocks
+			
+			// Simple random sample
 			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
 
+				// Plots are generated regardless of Clustering choice
+				ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+				
+				// in case of no clustering write generated Plots to output directly
 				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
-					// 1)simple random sample, no cluster plots
-					ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
 					outputPlots.addAll(simpleRandomPlots);
-
 				}
 
-				// 2)simple random sample with cluster plots
+				// in case of clustering use generated Plots as cluster seed points
 				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-
-					// first create cluster center points using simple random Sampling // cluster_coord <- coordinates(SRS(strata_utm, n = number_of_plots[l]))
-					ArrayList<Plot> clusterSeedPoints = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
-
-					// Second, make a cluster out of each cluster center point
-					if(clusterShape == GUI_Designer.I_SHAPE){
-						// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
-						ArrayList<Plot> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-						outputPlots.addAll(i_Plots);
-					}
-					if(clusterShape == GUI_Designer.L_SHAPE){
-						ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-						outputPlots.addAll(l_Plots);
-					}
-					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-						ArrayList<Plot> square_Plots = create_Square_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-						outputPlots.addAll(square_Plots);
-					}
-					if(clusterShape == GUI_Designer.H_SHAPE){
-						ArrayList<Plot> h_Plots = create_H_clusters(clusterSeedPoints, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
-						outputPlots.addAll(h_Plots);
-					}
+					clusterSeedPoints = simpleRandomPlots;
 				}
 			}
 
-			// systematic sampling
+			// Systematic sampling
 			if(samplingDesign == GUI_Designer.SYSTEMATIC_SAMPLING){
 
-				Point startPointUTM = null; // must initialize variable that gets assigned some meaningful value inside if-Block outside if-block, otherwise it cannot be used in following statements 
+				Point startPointUTM = null; // // must initialize variable outside if block so that it is visible in other if blocks
 
 				// get a starting point both for random and specified starting point options
 				if(startingPoint == GUI_Designer.STARTING_POINT_RANDOM){
-					// get a random startin point using simpleRandomSampling()
+					// get a random starting point using simpleRandomSampling()
 					startPointUTM = simpleRandomSampling(strataUTM.get(i), 1).get(0).getPoint(); // dieser Punkt hat bereits UTM-Koords, weil input stratumUTM schon in UTM ist
 
 				}
@@ -223,36 +205,54 @@ public class SamplingFunctionalityMethods {
 					startPointUTM = (Point) JTS.transform( startPointLonLat, transform);
 				}
 
-				// call systemacticSampling() using the newly created startPoint
+				// call systematicSampling() using the newly created startPoint
+				// Plots are generated regardless of Clustering choice
 				ArrayList<Plot> systematicPlots = systematicSampling(strataUTM.get(i),startPointUTM, gridDistX, gridDistY );
 
-				// 3) systematic sample , no cluster plots
+				// in case of no clustering write generated Plots to output directly
 				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
 					outputPlots.addAll(systematicPlots);
 				}
-				// 4) systematic sample with cluster plots
+				
+				// in case of clustering use generated Plots as cluster seed points
 				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
-					if(clusterShape == GUI_Designer.I_SHAPE){
-						ArrayList<Plot> i_Plots = create_I_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-						outputPlots.addAll(i_Plots);
-					}
-					if(clusterShape == GUI_Designer.L_SHAPE){
-						ArrayList<Plot> l_Plots = create_L_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-						outputPlots.addAll(l_Plots);
-
-					}
-					if(clusterShape == GUI_Designer.SQUARE_SHAPE){
-						ArrayList<Plot> square_Plots = create_Square_clusters(systematicPlots, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
-						outputPlots.addAll(square_Plots);
-
-					}
-					if(clusterShape == GUI_Designer.H_SHAPE){
-						ArrayList<Plot> h_Plots = create_H_clusters(systematicPlots, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
-						outputPlots.addAll(h_Plots);
-
-					}
+					clusterSeedPoints = systematicPlots;
 				}
 			}
+			
+			// ----------------------------------------------------------
+			// Cluster options
+			
+			if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+
+				// Second, make a cluster out of each cluster center point
+				if(clusterShape == GUI_Designer.I_SHAPE){
+					// output_plots <- I_plots(cluster_coord[], plot_dist[l], cluster_nrplots[l])
+					ArrayList<Plot> i_Plots = create_I_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+					outputPlots.addAll(i_Plots);
+				}
+				if(clusterShape == GUI_Designer.L_SHAPE){
+					ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+					outputPlots.addAll(l_Plots);
+				}
+				if(clusterShape == GUI_Designer.SQUARE_SHAPE){
+					ArrayList<Plot> square_Plots = create_Square_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+					outputPlots.addAll(square_Plots);
+				}
+				if(clusterShape == GUI_Designer.SQUARE_SHAPE_ROTATED){
+					ArrayList<Plot> square_Plots = create_rotated_Square_clusters(clusterSeedPoints, distBetweenSubPlots, strataUTM.get(i));
+					outputPlots.addAll(square_Plots);
+				}
+				if(clusterShape == GUI_Designer.H_SHAPE){
+					ArrayList<Plot> h_Plots = create_H_clusters(clusterSeedPoints, distBetweenSubPlots, numSubPlotsinHVerticalLine,  numSubPlotsinHhorizontalLine, strataUTM.get(i));
+					outputPlots.addAll(h_Plots);
+				}
+			}
+			// End Cluster options
+			// ----------------------------------------------------------
+			
+			// End Sampling logic
+			//-------------------------------------------------------------------------------------------------------------
 
 		}
 
@@ -1436,6 +1436,7 @@ public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clu
 		GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
 		Coordinate coord;
 		Point point;
+		Plot plot;
 		
 		// calculate Distance between cluster Plots and seed point (applying Pythagorean theorem)
 		double distFromSeedPoint = distBetweenSubPlots / Math.sqrt(2.0);
@@ -1461,7 +1462,7 @@ public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clu
 			// check if Point inside stratum, create Plot and add Plot to output ArrayList
 			if(point.within(stratum.getGeometry())){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 				outputPlots.add(plot);
 				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 			}
@@ -1474,7 +1475,7 @@ public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clu
 			// check if Point inside stratum, create Plot and add Plot to output ArrayList
 			if(point.within(stratum.getGeometry())){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 				outputPlots.add(plot);
 				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 			}
@@ -1487,7 +1488,7 @@ public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clu
 			// check if Point inside stratum, create Plot and add Plot to output ArrayList
 			if(point.within(stratum.getGeometry())){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 				outputPlots.add(plot);
 				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 			}
@@ -1500,7 +1501,7 @@ public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clu
 			// check if Point inside stratum, create Plot and add Plot to output ArrayList
 			if(point.within(stratum.getGeometry())){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
-				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 				outputPlots.add(plot);
 				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 			}
