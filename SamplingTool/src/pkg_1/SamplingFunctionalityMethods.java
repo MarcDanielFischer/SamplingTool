@@ -232,7 +232,11 @@ public class SamplingFunctionalityMethods {
 					outputPlots.addAll(i_Plots);
 				}
 				if(clusterShape == GUI_Designer.L_SHAPE){
-					ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, strataUTM.get(i));
+					ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, 1, strataUTM.get(i));
+					outputPlots.addAll(l_Plots);
+				}
+				if(clusterShape == GUI_Designer.L_SHAPE_UPSIDE_DOWN){
+					ArrayList<Plot> l_Plots = create_L_clusters(clusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, -1, strataUTM.get(i));
 					outputPlots.addAll(l_Plots);
 				}
 				if(clusterShape == GUI_Designer.SQUARE_SHAPE){
@@ -778,38 +782,46 @@ public class SamplingFunctionalityMethods {
 	 * @param clusterSeedPoints
 	 * @param distBetweenSubPlots
 	 * @param numClusterSubPlots
+	 * @param orientation 1: regular "L" shape -1: upside down
 	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
 	 */
-	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum ){
+	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, int orientation,  Stratum stratum ){
+		
+		// initialize output ArrayList
 		ArrayList<Plot> outputPlots = new ArrayList<Plot>();
 
 		// iterate over seed points
 		for(Plot seedPoint : clusterSeedPoints){
 
-			// use seedPoint.plotNr as clusterNr and set new seedPoint.plotNr to 1
-			int clusterNr = seedPoint.getPlotNr();
-			int subPlotNr = 1;
-			seedPoint.setClusterNr(clusterNr);
-			seedPoint.setPlotNr(subPlotNr);
+			int clusterNr = 0;
+			int subPlotNr = 0;
 
-			// add each seed point to output after changing its numbering
-			outputPlots.add(seedPoint);
+			if(numClusterSubPlots > 0){
+				// use seedPoint.plotNr as clusterNr and set new seedPoint.plotNr to 1
+				clusterNr = seedPoint.getPlotNr();
+				subPlotNr = 1;
+				seedPoint.setClusterNr(clusterNr);
+				seedPoint.setPlotNr(subPlotNr);
 
-			if(numClusterSubPlots > 1){ // if numClusterSubPlots == 1, the seed point alone will be its own cluster
-				
+				// add each seed point to output after changing its numbering
+				outputPlots.add(seedPoint);
+
 				// Determine number of plots to be created along each axis of the L
-				int numSubPlotsVerticalAxis = 0;
-				int numSubPlotsHorizontalAxis = 0;
-				
-				if(numClusterSubPlots % 2 != 0){ // odd total number of Plots shaping the cluster
+				int numPlotsVertical = 0;
+				int numPlotsHorizontal = 0;
+
+				// odd total number of Plots shaping the cluster
+				if(numClusterSubPlots % 2 != 0){ 
 					// in case of an odd total Plot number, both axes are of the same length
-					numSubPlotsVerticalAxis = (int)Math.floor(numClusterSubPlots / 2);
-					numSubPlotsHorizontalAxis = (int)Math.floor(numClusterSubPlots / 2);
-				} else{ // even total number of Plots shaping the cluster
+					numPlotsVertical = numPlotsHorizontal = (numClusterSubPlots-1) / 2;
+				} 
+
+				// even total number of Plots shaping the cluster
+				if(numClusterSubPlots % 2 == 0){ 
 					// in case of an even total Plot number, the vertical axis will be one Plot longer than the horizontal axis
-					numSubPlotsVerticalAxis = numClusterSubPlots / 2;
-					numSubPlotsHorizontalAxis = (numClusterSubPlots / 2) -1;
-				}
+					numPlotsVertical = numClusterSubPlots / 2;
+					numPlotsHorizontal = (numClusterSubPlots / 2) -1;
+				} 
 
 
 				// extract seed point coords and use them to build the other Plots
@@ -818,8 +830,14 @@ public class SamplingFunctionalityMethods {
 
 
 				// build Plots along vertical axis
-				for(int i = 1; i <= numSubPlotsVerticalAxis; i++){
-					y += distBetweenSubPlots; // as we build along the vertical axis, only y coords are affected
+				for(int i = 0; i < numPlotsVertical; i++){
+
+					if(orientation == 1){ // regular "L"
+						y += distBetweenSubPlots; // as we build along the vertical axis, only y coords are affected
+					}
+					if(orientation == -1){ // upside down "L"
+						y -= distBetweenSubPlots;
+					}
 
 					// create Points using GeometryFactory
 					GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
@@ -828,11 +846,10 @@ public class SamplingFunctionalityMethods {
 
 					// check if Point inside stratum, create Plot and add Plot to output ArrayList
 					if(point.within(stratum.getGeometry())){
-						subPlotNr = i * 2; // vertical axis Plots have  even numbers
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						subPlotNr++;
 						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 						outputPlots.add(plot);
-
 					}
 				}
 
@@ -841,7 +858,7 @@ public class SamplingFunctionalityMethods {
 				y = seedPoint.getPoint().getCoordinate().y;
 
 				// build plots along horizontal axis
-				for(int i = 1; i <= numSubPlotsHorizontalAxis; i++){
+				for(int i = 0; i < numPlotsHorizontal; i++){
 					x += distBetweenSubPlots; // as we build along the vertical axis, only x coords are affected
 
 					// create Points using GeometryFactory
@@ -851,20 +868,17 @@ public class SamplingFunctionalityMethods {
 
 					// check if Point inside stratum, create Plot and add Plot to output ArrayList
 					if(point.within(stratum.getGeometry())){
-						subPlotNr = (i * 2)  + 1  ; // horizontal axis Plots have odd numbers
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
+						subPlotNr++;
 						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
 						outputPlots.add(plot);
-
 					}
 				}
-
 			}
 		}
 		return outputPlots;
-
 	}
-	
+
 	
 	
 	/**

@@ -101,9 +101,10 @@ public class GUI_Designer extends JFrame {
 	int clusterShape = 0; // only for clusterSampling == YES
 	static final int I_SHAPE = 1; // constants to specify clusterShape
 	static final int L_SHAPE = 2;
-	static final int H_SHAPE = 3;
-	static final int SQUARE_SHAPE = 4;
-	static final int SQUARE_SHAPE_ROTATED = 5;
+	static final int L_SHAPE_UPSIDE_DOWN = 3;
+	static final int H_SHAPE = 4;
+	static final int SQUARE_SHAPE = 5;
+	static final int SQUARE_SHAPE_ROTATED = 6;
 	int numSubPlotsinHVerticalLine = 0; // only for clusterShape == H_SHAPE
 	int numSubPlotsinHhorizontalLine = 0; // only for clusterShape == H_SHAPE
 	int numClusterSubPlots = 0; // only for clusterSampling == YES
@@ -339,6 +340,7 @@ public class GUI_Designer extends JFrame {
 		comboBox_ClusterDesign.addItem(null);
 		comboBox_ClusterDesign.addItem("I");
 		comboBox_ClusterDesign.addItem("L");
+		comboBox_ClusterDesign.addItem("L Upside Down");
 		comboBox_ClusterDesign.addItem("H");
 		comboBox_ClusterDesign.addItem("Square");
 		comboBox_ClusterDesign.addItem("Rotated Square");
@@ -474,6 +476,8 @@ public class GUI_Designer extends JFrame {
 						case "I": clusterShape = I_SHAPE;
 						break;
 						case "L": clusterShape = L_SHAPE;
+						break;
+						case "L Upside Down": clusterShape = L_SHAPE_UPSIDE_DOWN;
 						break;
 						case "H": clusterShape = H_SHAPE;
 						break;
