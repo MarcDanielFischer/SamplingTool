@@ -1574,7 +1574,7 @@ private static File getFile() throws Exception{
 	public static void writeOutput(File file, ArrayList<Plot> samplePlots, int clusterSampling) throws Exception{
 		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
 
-		FileWriter fileWriter = new FileWriter(file, true); // second param is for appending to file (Yes/No)
+		FileWriter fileWriter = new FileWriter(file, false); // second param is for appending to file (Yes/No) --> 
 		
 		// write file header
 		// adapt header for CLUSTER_SAMPLING_YES option
