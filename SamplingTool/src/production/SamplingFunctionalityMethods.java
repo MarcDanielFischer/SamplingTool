@@ -4,7 +4,7 @@
  * 
  */
 
-package pkg_1;
+package production;
 
 import java.io.File;
 import java.io.FileWriter;

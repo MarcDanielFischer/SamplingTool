@@ -7,7 +7,7 @@
  */
 
 
-package pkg_1;
+package test;
 
 import java.io.File;
 import java.util.ArrayList;

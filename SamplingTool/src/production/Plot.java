@@ -13,7 +13,7 @@
  * The stratum property is needed because we want to write it as additional information to the output file, too.
  */
 
-package pkg_1;
+package production;
 
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 

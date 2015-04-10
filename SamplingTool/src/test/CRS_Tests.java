@@ -21,7 +21,7 @@
  *  - Frage: wie findet man den zugehörigen EPSG-Code zu einem CRS, wenn es einen gibt? --> gar nicht; muss man selber machen (manuell zuordnen)
  */
 
-package pkg_1;
+package test;
 
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
