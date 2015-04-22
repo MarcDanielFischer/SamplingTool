@@ -47,6 +47,7 @@ public class SamplingFunctionalityMethods {
 	 * It takes the sampling params from the GUI, implements the sampling logic
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
+	// TODO die ganzen input params evtl als ParameterValueGroup (Key-Value_Pair) übergeben
 	public static void runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize ) throws Exception {
 
 		// get all features in the shapefile
@@ -358,7 +359,7 @@ public class SamplingFunctionalityMethods {
 			}
 		}
 		finally {
-			iterator.close(); // prevents memory leaks or data loss or whatever
+			iterator.close(); // prevents memory leaks and data loss
 		}
 		return features;
 	}
