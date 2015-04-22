@@ -46,10 +46,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.geotools.coverage.Category;
 import org.geotools.coverage.GridSampleDimension;
 import org.geotools.coverage.TypeMap;
+import org.geotools.coverage.grid.GridCoordinates2D;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
+import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.coverage.grid.io.AbstractGridCoverage2DReader;
 import org.geotools.coverage.grid.io.AbstractGridFormat;
@@ -96,6 +99,7 @@ import org.geotools.geometry.DirectPosition2D;
 import org.geotools.geometry.GeneralEnvelope;
 import org.geotools.process.ProcessFactory;
 import org.geotools.process.Processors;
+import org.geotools.process.raster.CoverageUtilities;
 import org.geotools.process.raster.RasterProcessFactory;
 import org.geotools.process.raster.RasterZonalStatistics;
 import org.geotools.referencing.CRS;
@@ -103,6 +107,8 @@ import org.geotools.resources.coverage.IntersectUtils;
 import org.geotools.util.NumberRange;
 import org.jaitools.media.jai.zonalstats.ZonalStatsDescriptor;
 import org.jaitools.numeric.SampleStats;
+
+import production.SamplingFunctionalityMethods;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -115,11 +121,12 @@ import com.vividsolutions.jts.geom.Polygon;
 import javax.media.jai.ROI;
 import javax.media.jai.ROIShape;
 import javax.media.jai.iterator.RectIterFactory;
+import javax.media.jai.iterator.RectIter;
 
 
 
 public class RasterTests {
-	
+
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*
@@ -132,6 +139,7 @@ public class RasterTests {
 	 * 
 	 * Idee: CoverageProcessor --> CoverageCrop Operation --> ROI param: clip Polygon
 	 */
+	// TODO diees Methode gebrauchstüchtig machen --> siehe Anpassungen in main()	
 	private static Coverage clipImageToFeatureSource(RenderedImage image, ReferencedEnvelope bounds,
 			FeatureSource<SimpleFeatureType, SimpleFeature> featureSource)
 					throws IOException, FactoryException, MismatchedDimensionException, TransformException {
@@ -205,13 +213,14 @@ public class RasterTests {
 		return clippedCoverage;
 	}
 
-	
+
 	/*
 	 * http://gis.stackexchange.com/questions/73210/how-to-crop-an-image-based-on-a-shapefile-using-geotools
 	 * 
 	 * This clips the image but may also reduce the original extent. 
 	 * If you want to preserve that, then you'll need to "matt" the clippedCoverage like this:
 	 */
+	// TODO rausfinden: wofür ist diese Methode gut???	
 	private BufferedImage mattCroppedImage(final BufferedImage source, GridCoverage2D cropped) 
 	{
 		RenderedImage raster = cropped.getRenderedImage();
@@ -227,8 +236,8 @@ public class RasterTests {
 	}
 	
 	
-	
-	
+
+
 	/*
 	 * Find raster pixel value at given location (x, y)
 	 * 
@@ -250,11 +259,27 @@ public class RasterTests {
 	}
 
 
+
+	
+	/*
+	 * (manipulated) Code snippet from
+	 * https://svn.osgeo.org/geotools/trunk/modules/plugin/geotiff/src/test/java/org/geotools/gce/geotiff/GeoTiffWriterTest.java 
+	 */
+	public static void writeGeoTiff(String outputFilePath, GridCoverage2D coverage)throws IOException{
+		File outputFile = new File(outputFilePath);
+		final GeoTiffFormat format = new GeoTiffFormat();
+		final GridCoverageWriter writer = format.getWriter(outputFile);
+		writer.write(coverage, null); // kein sidecar file wird geschrieben, korrektes CRS ist anscheinend trotzdem im Output-GeoTiff drin (sagt QGIS)
+	}
+
+
+
 	public static void main(String[] args)throws Exception{
 
 		// use fictive Ghana weight Raster (GeoTiff format)
 		File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\weightraster\\fictive_weightraster.tif");
 		// File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\uDig_Sample_Data\\clouds.jpg");
+		System.out.println("input raster: " + rasterFile.toString());
 		
 		// automatische Rasterformaterkennung --> ist mir zu störanfällig, geht theoretisch auch 
 		// AbstractGridFormat format = GridFormatFinder.findFormat( rasterFile ); // fehleranfällig !!
@@ -283,62 +308,70 @@ public class RasterTests {
 		
 		
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//Coverage clippedRaster = clipImageToFeatureSource(renderedImage, refEnv, featureSource); // geht nicht
-		/*
-		 * Methode clipImageToFeatureSource() funktioniert nicht, weil bei 
-		 * gridCoverageFactory.create("Raster", image, bounds)
-		 * aus unbekannten Gründen 
-		 * Fehler: Illegal transform of type "LinearTransform1D" kommt
-		 */
+		// Clip Polygon from Raster 
 		
-		// ich mache es selbst:
-		// get clip feature (polygon from SHP)
-		File shapeFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\Ghana_Only_Southern_Marginal\\Ghana_Only_Southern_Marginal.shp");
+		// Specify Input Shapefile and stratum
+		File shapeFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\Ghana-strata\\zones_poly.shp");
+		String sampleColumn = "VEGZONE";
+		String clipPolygon = "Savannah";
+		
+		System.out.println("shapeFile: " + shapeFile.toString());
+		System.out.println("Stratum: " + clipPolygon.toString());
+		
+		
+		
+		
+		// connect to Shapefile
 		FileDataStore dataStore = FileDataStoreFinder.getDataStore(shapeFile);
 		SimpleFeatureSource featureSource = dataStore.getFeatureSource(); // wird benötigt, um an einzelne Features ranzukommen (Feature = Zeile in SHP Attribute Table)
-
 		SimpleFeatureCollection collection = featureSource.getFeatures();
 
+		// check if CRS from SHP and Raster are different
 		CoordinateReferenceSystem crsFeatures = featureSource.getSchema().getCoordinateReferenceSystem();
-		CoordinateReferenceSystem crsMap = coverage.getCoordinateReferenceSystem();
-		boolean needsReproject = !CRS.equalsIgnoreMetadata(crsFeatures, crsMap);
-		MathTransform transform = CRS.findMathTransform(crsFeatures, crsMap, true);
+		CoordinateReferenceSystem crsRaster = coverage.getCoordinateReferenceSystem();
+		boolean needsReproject = !CRS.equalsIgnoreMetadata(crsFeatures, crsRaster);
+		MathTransform transform = CRS.findMathTransform(crsFeatures, crsRaster, true);
 
+		//TODO weiter vereinfachen
+		// iterate over features inside SHP
 		SimpleFeatureIterator iterator = collection.features();
-		List<Geometry> allGeometries = new ArrayList<Geometry>();
+		List<Geometry> clipGeometries = new ArrayList<Geometry>();
 		try {
 			while (iterator.hasNext()) {
 				SimpleFeature feature = iterator.next();
-				Geometry geometry = (Geometry) feature.getDefaultGeometry();
-				if (geometry == null)
-					continue;
-				if (!geometry.isSimple())
-					continue;
-				if (needsReproject) {
-					geometry = JTS.transform(geometry, transform);
-					System.out.println("Clip Geometry needed Reprojection");
-				}
-				
-				Envelope envelope = coverage.getEnvelope();
-				ReferencedEnvelope refEnv = new ReferencedEnvelope(envelope);
-				
-				Geometry intersection = geometry.intersection(JTS.toGeometry(refEnv)); // intersection Polygonfläche (feature) mit Raster BBox
-				if (intersection.isEmpty()) {
-					continue;
-				}
-				if(intersection instanceof MultiPolygon) {
-					MultiPolygon mp = (MultiPolygon)intersection;
-					for (int i = 0; i < mp.getNumGeometries(); i++) {
-						com.vividsolutions.jts.geom.Polygon g = (com.vividsolutions.jts.geom.Polygon)mp.getGeometryN(i);
-						Geometry gIntersection = IntersectUtils.intersection(g, JTS.toGeometry(refEnv));
-						if (gIntersection.isEmpty()) {
-							continue;
-						}
-						allGeometries.add(g);
+				// check for desired clipPolygon and do the rest of stuff only if it is found
+				if(feature.getAttribute(sampleColumn).equals(clipPolygon))
+				{
+					// extract and reproject Geometry
+					Geometry geometry = (Geometry) feature.getDefaultGeometry();
+					if (needsReproject) {
+						geometry = JTS.transform(geometry, transform);
 					}
+					
+					Envelope envelope = coverage.getEnvelope();
+					ReferencedEnvelope refEnv = new ReferencedEnvelope(envelope);
+					
+					//TODO intersection-part rausschmeißen
+					Geometry intersection = geometry.intersection(JTS.toGeometry(refEnv)); // intersection Polygonfläche (feature) mit Raster BBox
+					if (intersection.isEmpty()) {
+						continue;
+					}
+					
+					if(intersection instanceof MultiPolygon) {
+						MultiPolygon mp = (MultiPolygon)intersection;
+						for (int i = 0; i < mp.getNumGeometries(); i++) {
+							com.vividsolutions.jts.geom.Polygon g = (com.vividsolutions.jts.geom.Polygon)mp.getGeometryN(i);
+							Geometry gIntersection = IntersectUtils.intersection(g, JTS.toGeometry(refEnv));
+							if (gIntersection.isEmpty()) {
+								continue;
+							}
+							clipGeometries.add(g);
+						}
+					}
+					else if (intersection instanceof Polygon)
+						clipGeometries.add(intersection);
 				}
-				else if (intersection instanceof Polygon)
-					allGeometries.add(intersection);
+				
 				else
 					continue;
 			}
@@ -347,31 +380,49 @@ public class RasterTests {
 				iterator.close();
 			}
 		}
-		//GridCoverageFactory gridCoverageFactory = new GridCoverageFactory();
-		//Coverage coverage = gridCoverageFactory.create("Raster", image, bounds); // hier Fehler: Illegal transform of type "LinearTransform1D".
+		
+		
 		GridCoverage2D clippedCoverage = null;
-		if (allGeometries.size() > 0) {
+		if (clipGeometries.size() > 0) {
 			CoverageProcessor processor = new CoverageProcessor();
 			Operation operation = processor.getOperation("CoverageCrop");
 			ParameterValueGroup params = operation.getParameters();
 			params.parameter("Source").setValue(coverage);
 			GeometryFactory factory = JTSFactoryFinder.getGeometryFactory(null);
-			Geometry[] a = allGeometries.toArray(new Geometry[0]);
+			Geometry[] a = clipGeometries.toArray(new Geometry[0]);
 			GeometryCollection c = new GeometryCollection(a, factory);
-			//params.parameter("ENVELOPE").setValue(bounds);
 			params.parameter("ROI").setValue(c);
-			params.parameter("ForceMosaic").setValue(true);
+			params.parameter("ForceMosaic").setValue(true); // was macht ForceMosaic?
 			clippedCoverage = (GridCoverage2D)processor.doOperation(params);
 		}
 
-		// Zugriff auf Bildparameter über RenderedImage
-		RenderedImage renderedImage = clippedCoverage.getRenderedImage(); // runtime class of renderedImage: javax.media.jai.RenderedOp
-		//numRows
-		int numColumns = renderedImage.getWidth();
-		//numColumns
-		int numRows = renderedImage.getHeight();
 		
-
+		
+		// write clippedCoverage to file and ceck in QGIS
+		writeGeoTiff("D:\\_HCU\\_Masterarbeit\\TestData\\TestClip\\Savannah.tif", clippedCoverage);
+		
+		
+		
+		
+		/////////////////////////////////////////////////////////////////////////////////////
+		// Iterieren über Rasterbild:                                                      //
+		// Vergleich von 3 Varianten                                                       //
+        /////////////////////////////////////////////////////////////////////////////////////
+		
+		
+		// ignore null value when screening raster for max and sums
+		// find null value in Categories
+		// TODO find null value code must be generalized to fit other input files
+		GridSampleDimension band = clippedCoverage.getSampleDimension(0); // weight raster is supposed to only have 1 dimension (band)
+		List<Category> categories = band.getCategories();
+		Category noData = categories.iterator().next();
+		NumberRange<? extends Number> range= noData.getRange();
+		double noDataValue = range.getMaximum(); // geht auch mit getMinimum(), da nur ein Wert
+		System.out.println(noData.toString());
+		
+        ////////////////////////////////////////////////////////
+		//            Variante 1: using RectIter              //
+        ////////////////////////////////////////////////////////
 		// maxValue von clippedCoverage
 		// Lösung: org.geotools.coverage.grid.RenderedSampleDimension ermittelt min/max --> Code snippet kopiert und angepasst
         /*
@@ -385,94 +436,135 @@ public class RasterTests {
          * 
          * min/ max sind double[]
          */
-       double[] min = null;
-       double[] max = null;
-       int numBands = clippedCoverage.getNumSampleDimensions();
-       javax.media.jai.iterator.RectIter coverageIterator = RectIterFactory.create(renderedImage, null);
-        if ( (min==null || max==null)) {
-            final boolean computeMin;
-            final boolean computeMax;
-            if (computeMin = (min == null)) {
-                min = new double[numBands];
-                Arrays.fill(min, Double.POSITIVE_INFINITY);
-            }
-            if (computeMax = (max == null)) {
-                max = new double[numBands];
-                Arrays.fill(max, Double.NEGATIVE_INFINITY);
-            }
-            int b = 0;
-            coverageIterator.startBands();
-            if (!coverageIterator.finishedBands()) do {
-            	coverageIterator.startLines();
-                if (!coverageIterator.finishedLines()) do {
-                	coverageIterator.startPixels();
-                    if (!coverageIterator.finishedPixels()) do {
-                        final double z = coverageIterator.getSampleDouble();
-                        if (computeMin && z<min[b]) min[b]=z;
-                        if (computeMax && z>max[b]) max[b]=z;
-                    } while (!coverageIterator.nextPixelDone());
-                } while (!coverageIterator.nextLineDone());
-                if (computeMin && computeMax) {
-                    if (!(min[b] < max[b])) {
-                        min[b] = 0;
-                        max[b] = 1;
-                    }
-                }
-                b++;
-            } while (!coverageIterator.nextBandDone());
-        }
 		
-		System.out.println("min: " + min[0]);
-		System.out.println("max: " + max[0]);
-		
-		
-		
-		
-		// mal bisschen nachlesen über javax.media.jai.iterator.RectIter
-		// was macht der, wie funktioniert der?
-		// in welchem jar steht die Klasse? --> Javadoc attachen
-		
-		
-		
-		
-		
-		
+		// Zugriff auf Raster-Bild über RenderedImage
+		RenderedImage renderedImage = clippedCoverage.getRenderedImage(); // runtime class of renderedImage: javax.media.jai.RenderedOp
+		double[] min = null;
+		double[] max = null;
+		double suma = 0;
+		int numBands = clippedCoverage.getNumSampleDimensions();
+		RectIter coverageIterator = RectIterFactory.create(renderedImage, null);
+		min = new double[numBands];
+		Arrays.fill(min, Double.POSITIVE_INFINITY);
+		max = new double[numBands];
+		Arrays.fill(max, Double.NEGATIVE_INFINITY);
+		int b = 0;
+		coverageIterator.startBands(); // Sets the iterator to the first band of the image. The pixel column and line are unchanged. 
+		if (!coverageIterator.finishedBands()) do { // Returns true if the max band in the image has been exceeded. 
+			coverageIterator.startLines(); // Sets the iterator to the first line of its bounding rectangle. The pixel and band offsets are unchanged. 
+			if (!coverageIterator.finishedLines()) do { // Returns true if the bottom row of the bounding rectangle has been passed. 
+				coverageIterator.startPixels(); // Sets the iterator to the leftmost pixel of its bounding rectangle. The line and band offsets are unchanged. 
+				if (!coverageIterator.finishedPixels()) do { // Returns true if the right edge of the bounding rectangle has been passed. 
+					final double currentValue = coverageIterator.getSampleDouble();// Returns the current sample as a double. 
+					if(currentValue != noDataValue){ // ignore NULL values (might be different according to input file)
+						if (currentValue<min[b]) min[b]=currentValue;
+						if (currentValue>max[b]) max[b]=currentValue;
+						suma = suma + currentValue;
+					}
+
+				} while (!coverageIterator.nextPixelDone());
+			} while (!coverageIterator.nextLineDone());
+			if (!(min[b] < max[b])) {
+				min[b] = 0;
+				max[b] = 1;
+			}
+			b++;
+		} while (!coverageIterator.nextBandDone());
+
+		System.out.println("min mit RectIter: " + min[0]);
+		System.out.println("max mit RectIter: " + max[0]);
+		System.out.println("Summe mit RectIter: " + suma);
 
 
 		
+        ////////////////////////////////////////////////////////
+		//            Variante 2: Eigenbau                    //
+        ////////////////////////////////////////////////////////
+		// Bsp: http://de.slideshare.net/moovida/opensource-gis-development-part-4, slide 7
+
+		// könnte evtl. Probleme geben, weil das Raster nicht bei 0,0 losgeht, sondern bei 8,118 oder so
+		// difference between image space and world space
+		// beware of NODATA values!
+		
+		// über renderedImage
+		//numColumns
+		int numColumns = renderedImage.getWidth();
+		//numRows
+		int numRows = renderedImage.getHeight();
+		int minX = renderedImage.getMinX();
+		int minY = renderedImage.getMinY();
+		System.out.println("renderedImage width: " + numColumns);
+		System.out.println("renderedImage height: " + numRows);
+		System.out.println("renderedImage minX: " + minX);
+		System.out.println("renderedImage minY: " + minY);
+		
+		
+
+		
+		// how to access pixel values
+		// raster.getSample()
+		// coverage.evaluate()
+		
+		double sum = 0;
+		double maxValue = 0;
+		double[] values = new double[1];
+		double currentValue = 0; 
+		for(int r = minY; r < minY + numRows; r++){ // loop over rows
+			for(int c = minX; c < minX + numColumns; c++){ // loo over columns
+				clippedCoverage.evaluate(new GridCoordinates2D(c, r), values);
+				currentValue = values[0];
+				if(currentValue != noDataValue){ // ignore NULL values (might be different according to input file)
+					sum = sum + currentValue;
+					if(currentValue > maxValue) maxValue = currentValue;
+				}
+
+			}
+		}
+		System.out.println("max mit Eigenbau: " + maxValue);
+		System.out.println("sum mit Eigenbau: " + sum);
+
 		
 		
 		
-		
-//		// mal ausprobieren als Alternative
-//		// so gehts anscheinend, aber unschöne Lösung
-//		Raster raster = clippedCoverage.getRenderedImage().getData();
-//        double[] data = new double[raster.getHeight()*raster.getWidth()];        
-//        raster.getSamples(raster.getMinX(),
-//                raster.getMinY(),
-//                raster.getWidth(), 
-//                raster.getHeight(), 0, data);
-//        // braucht import org.apache.commons.lang3.ArrayUtils;
-//        System.out.println(SampleStats.max(ArrayUtils.toObject(data), true));
-		
-		
-		
+        ////////////////////////////////////////////////////////
+		//            Variante 3: Internetvorlage             //
+        ////////////////////////////////////////////////////////
+		// mal ausprobieren als Alternative
+		// so gehts anscheinend, aber unschöne Lösung
+		Raster raster = clippedCoverage.getRenderedImage().getData();
+        double[] data = new double[raster.getHeight()*raster.getWidth()];        
+        raster.getSamples(raster.getMinX(),
+                raster.getMinY(),
+                raster.getWidth(), 
+                raster.getHeight(), 0, data);
+        // convenience method to find max in double[]-array
+        // braucht import org.apache.commons.lang3.ArrayUtils;
+        //System.out.println(SampleStats.max(ArrayUtils.toObject(data), true));
+		// ich machs hier selbst for speed: loop over array and find max
+        double maximum = 0;
+        double summe = 0;
+        double currentVal;
+        for(int i = 0; i < data.length; i++){
+        	currentVal = data[i];
+        	if(currentVal != noDataValue){ // ignore NULL values (might be different according to input file)
+        		if(currentVal > maximum) maximum = currentVal;
+        		summe = summe + currentVal;
+        	}
+
+		}
+		System.out.println("max mit Internetvorlage: " + maximum);
+		System.out.println("sum mit Internetvorlage: " + summe);
 		
 		
 		
 		// is there a NULL value in the clipped region? then throw exception
+		// --> schwierig rauszufinden, weil das clippedraster rechteckig ist und deswegen ganz viele Nullwerte hat
 		
-		// Summe aller Pixelwerte im Clip
+		// Summe aller Pixelwerte im Clip --> RectIter einsetzbar?
 		
 		
 		
-		// write clipped Coverage to output file and view it in QGIS
-		// kumma da:
-		// https://svn.osgeo.org/geotools/trunk/modules/plugin/geotiff/src/test/java/org/geotools/gce/geotiff/GeoTiffWriterTest.java 
-//		File outputFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\ProgrammedClip.tif");
-//		final GeoTiffFormat format = new GeoTiffFormat();
-//		final GridCoverageWriter writer = format.getWriter(outputFile);
-//		writer.write(clippedCoverage, null); // kein sidecar file wird geschrieben, korrektes CRS ist anscheinend trotzdem im Output-GeoTiff drin (sagt QGIS)
+		
 
 		
 		
