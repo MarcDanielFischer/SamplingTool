@@ -277,17 +277,16 @@ public class RasterTests {
 	public static void main(String[] args)throws Exception{
 
 		// use fictive Ghana weight Raster (GeoTiff format)
-		File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\weightraster\\fictive_weightraster.tif");
+		File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\Globcover2009_V2.3_Global\\GLOBCOVER_L4_200901_200912_V2.3.tif");
 		// File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\uDig_Sample_Data\\clouds.jpg");
 		System.out.println("input raster: " + rasterFile.toString());
 		
 		// automatische Rasterformaterkennung --> ist mir zu stˆranf‰llig, geht theoretisch auch 
-		// AbstractGridFormat format = GridFormatFinder.findFormat( rasterFile ); // fehleranf‰llig !!
-		// AbstractGridCoverage2DReader reader = format.getReader(rasterFile);
+		//AbstractGridFormat format = GridFormatFinder.findFormat( rasterFile ); // fehleranf‰llig !!
+		//AbstractGridCoverage2DReader reader = format.getReader(rasterFile);
 		//GridCoverage2DReader reader = format.getReader(rasterFile); // macht das einen Unterschied? --> hier nicht
 
 		// create Reader directly: scheint weniger fehleranf‰llig zu sein,  
-		// GeoTiffReader reader = new GeoTiffReader(rasterFile, new Hints(Hints.FORCE_LONGITUDE_FIRST_AXIS_ORDER, Boolean.TRUE));
 		GeoTiffReader reader = new GeoTiffReader(rasterFile);
 
 		GridCoverage2D coverage = null;
@@ -311,9 +310,9 @@ public class RasterTests {
 		// Clip Polygon from Raster 
 		
 		// Specify Input Shapefile and stratum
-		File shapeFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\Ghana-strata\\zones_poly.shp");
+		File shapeFile = new File("D:\\_HCU\\_Masterarbeit\\TestData\\TestSmallPolygons\\TestSmallPolygons.shp");
 		String sampleColumn = "VEGZONE";
-		String clipPolygon = "Savannah";
+		String clipPolygon = "Test4";
 		
 		System.out.println("shapeFile: " + shapeFile.toString());
 		System.out.println("Stratum: " + clipPolygon.toString());
@@ -348,28 +347,30 @@ public class RasterTests {
 						geometry = JTS.transform(geometry, transform);
 					}
 					
-					Envelope envelope = coverage.getEnvelope();
-					ReferencedEnvelope refEnv = new ReferencedEnvelope(envelope);
+					clipGeometries.add(geometry);
 					
-					//TODO intersection-part rausschmeiﬂen
-					Geometry intersection = geometry.intersection(JTS.toGeometry(refEnv)); // intersection Polygonfl‰che (feature) mit Raster BBox
-					if (intersection.isEmpty()) {
-						continue;
-					}
-					
-					if(intersection instanceof MultiPolygon) {
-						MultiPolygon mp = (MultiPolygon)intersection;
-						for (int i = 0; i < mp.getNumGeometries(); i++) {
-							com.vividsolutions.jts.geom.Polygon g = (com.vividsolutions.jts.geom.Polygon)mp.getGeometryN(i);
-							Geometry gIntersection = IntersectUtils.intersection(g, JTS.toGeometry(refEnv));
-							if (gIntersection.isEmpty()) {
-								continue;
-							}
-							clipGeometries.add(g);
-						}
-					}
-					else if (intersection instanceof Polygon)
-						clipGeometries.add(intersection);
+//					//TODO intersection-part rausschmeiﬂen
+//					Envelope envelope = coverage.getEnvelope();
+//					ReferencedEnvelope refEnv = new ReferencedEnvelope(envelope);
+//					
+//					Geometry intersection = geometry.intersection(JTS.toGeometry(refEnv)); // intersection Polygonfl‰che (feature) mit Raster BBox
+//					if (intersection.isEmpty()) {
+//						continue;
+//					}
+//					
+//					if(intersection instanceof MultiPolygon) {
+//						MultiPolygon mp = (MultiPolygon)intersection;
+//						for (int i = 0; i < mp.getNumGeometries(); i++) {
+//							com.vividsolutions.jts.geom.Polygon g = (com.vividsolutions.jts.geom.Polygon)mp.getGeometryN(i);
+//							Geometry gIntersection = IntersectUtils.intersection(g, JTS.toGeometry(refEnv));
+//							if (gIntersection.isEmpty()) {
+//								continue;
+//							}
+//							clipGeometries.add(g);
+//						}
+//					}
+//					else if (intersection instanceof Polygon)
+//						clipGeometries.add(intersection);
 				}
 				
 				else
@@ -399,7 +400,7 @@ public class RasterTests {
 		
 		
 		// write clippedCoverage to file and ceck in QGIS
-		writeGeoTiff("D:\\_HCU\\_Masterarbeit\\TestData\\TestClip\\Savannah.tif", clippedCoverage);
+		//writeGeoTiff("D:\\_HCU\\_Masterarbeit\\TestData\\TestClip\\TestSmallPolygon4.tif", clippedCoverage);
 		
 		
 		
@@ -415,6 +416,7 @@ public class RasterTests {
 		// TODO find null value code must be generalized to fit other input files
 		GridSampleDimension band = clippedCoverage.getSampleDimension(0); // weight raster is supposed to only have 1 dimension (band)
 		List<Category> categories = band.getCategories();
+		System.out.println("categories: " + categories.toString());
 		Category noData = categories.iterator().next();
 		NumberRange<? extends Number> range= noData.getRange();
 		double noDataValue = range.getMaximum(); // geht auch mit getMinimum(), da nur ein Wert
