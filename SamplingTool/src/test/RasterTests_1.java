@@ -125,7 +125,7 @@ import javax.media.jai.iterator.RectIter;
 
 
 
-public class RasterTests {
+public class RasterTests_1 {
 
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ public class RasterTests {
 		return clippedCoverage;
 	}
 
-
+	
 	/*
 	 * http://gis.stackexchange.com/questions/73210/how-to-crop-an-image-based-on-a-shapefile-using-geotools
 	 * 
