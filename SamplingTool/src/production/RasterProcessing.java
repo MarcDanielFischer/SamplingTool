@@ -1,107 +1,44 @@
-package test;
+package production;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBuffer;
-import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
-import java.awt.image.SampleModel;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.geotools.coverage.Category;
 import org.geotools.coverage.GridSampleDimension;
-import org.geotools.coverage.TypeMap;
 import org.geotools.coverage.grid.GridCoordinates2D;
 import org.geotools.coverage.grid.GridCoverage2D;
-import org.geotools.coverage.grid.GridCoverageFactory;
-import org.geotools.coverage.grid.GridEnvelope2D;
-import org.geotools.coverage.grid.GridGeometry2D;
-import org.geotools.coverage.grid.io.AbstractGridCoverage2DReader;
-import org.geotools.coverage.grid.io.AbstractGridFormat;
-import org.geotools.coverage.grid.io.GridCoverage2DReader;
-import org.geotools.coverage.grid.io.GridFormatFinder;
-import org.geotools.coverage.processing.AbstractOperation;
-import org.geotools.coverage.processing.AbstractProcessor;
 import org.geotools.coverage.processing.CoverageProcessor;
-import org.geotools.coverage.processing.OperationJAI;
-import org.geotools.coverage.processing.operation.Extrema;
-import org.geotools.data.FeatureSource;
 import org.geotools.data.FileDataStore;
 import org.geotools.data.FileDataStoreFinder;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.simple.SimpleFeatureSource;
-import org.geotools.feature.FeatureCollection;
-import org.geotools.feature.FeatureIterator;
 import org.geotools.gce.geotiff.GeoTiffFormat;
 import org.geotools.gce.geotiff.GeoTiffReader;
-import org.geotools.gce.geotiff.GeoTiffWriter;
+import org.geotools.geometry.DirectPosition2D;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.opengis.coverage.CannotEvaluateException;
-import org.opengis.coverage.Coverage;
-import org.opengis.coverage.SampleDimensionType;
-import org.opengis.coverage.grid.GridCoverageReader;
+import org.geotools.referencing.CRS;
+import org.geotools.util.NumberRange;
 import org.opengis.coverage.grid.GridCoverageWriter;
-import org.opengis.coverage.grid.GridEnvelope;
 import org.opengis.coverage.processing.Operation;
 import org.opengis.feature.simple.SimpleFeature;
-import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.geometry.DirectPosition;
-import org.opengis.geometry.Envelope;
-import org.opengis.geometry.MismatchedDimensionException;
 import org.opengis.parameter.ParameterValueGroup;
-import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opengis.referencing.datum.PixelInCell;
 import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.TransformException;
 import org.opengis.util.InternationalString;
-import org.geotools.geometry.DirectPosition2D;
-import org.geotools.geometry.GeneralEnvelope;
-import org.geotools.process.ProcessFactory;
-import org.geotools.process.Processors;
-import org.geotools.process.raster.CoverageUtilities;
-import org.geotools.process.raster.RasterProcessFactory;
-import org.geotools.process.raster.RasterZonalStatistics;
-import org.geotools.referencing.CRS;
-import org.geotools.resources.coverage.IntersectUtils;
-import org.geotools.util.NumberRange;
-import org.jaitools.media.jai.zonalstats.ZonalStatsDescriptor;
-import org.jaitools.numeric.SampleStats;
 
-import production.Plot;
-import production.SamplingFunctionalityMethods;
-
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
 
-import javax.media.jai.ROI;
-import javax.media.jai.ROIShape;
-import javax.media.jai.iterator.RectIterFactory;
-import javax.media.jai.iterator.RectIter;
-
-
-
-public class RasterTests_2 {
-
+public class RasterProcessing {
 
 
 	/**
@@ -126,14 +63,14 @@ public class RasterTests_2 {
 		if(needsReproject){
 			point = (Point)JTS.transform(point, transform);
 		}
-		
+
 		DirectPosition position = new DirectPosition2D( crsRaster, point.getX(), point.getY());
-		
+
 		byte[] value =coverage.evaluate(position, (byte  []) null);
 		return value;
 	}
-
-
+	
+	
 	/**
 	 * Find raster pixel value at given Plot location.
 	 * This method is overloaded so that it fits both raster files with integer as well as floating point values.
@@ -162,7 +99,7 @@ public class RasterTests_2 {
 		double[] value =coverage.evaluate(position, (double[]  ) null);
 		return value;
 	}
-
+	
 	
 	/**
 	 * Writes a GridCoverage2D to the specified output file path.
@@ -177,8 +114,8 @@ public class RasterTests_2 {
 		final GridCoverageWriter writer = format.getWriter(outputFile);
 		writer.write(coverage, null); // no sidecar file; CRS is written inside .tif file
 	}
-
-
+	
+	
 	/**
 	 * Gets the Geometries to be clipped from a Raster as an ArrayList object. 
 	 * If the input SHP does not have the same CRS as the input raster,
@@ -228,7 +165,6 @@ public class RasterTests_2 {
 		}
 		return clipGeometries;
 	}
-
 	
 	
 	/**
@@ -252,7 +188,7 @@ public class RasterTests_2 {
 		GridCoverage2D clippedCoverage = (GridCoverage2D)processor.doOperation(params); // this line throws the following annoying Exception if JAI MediaLib is not disabled: Error: Could not find mediaLib accelerator wrapper classes. Continuing in pure Java mode.
 		return clippedCoverage;
 	}
-
+	
 	
 	/**
 	 * Convenience method for reading GeoTIFF raster files.
@@ -267,7 +203,7 @@ public class RasterTests_2 {
 		GridCoverage2D coverage = reader.read(null);
 		return coverage;
 	}
-	
+
 	
 	/**
 	 * Gets the NODATA value of the specified band of a GridCoverage2D object. For use with weight rasters: bandIndex should always be 0
@@ -339,7 +275,7 @@ public class RasterTests_2 {
 		return maxValue;
 	}	
 	
-
+	
 	/**
 	 * Calculates the sum of all not-NULL values in the specified band of the input GridCoverage2D object(NULL values will be ignored).
 	 * @param coverage
@@ -396,142 +332,4 @@ public class RasterTests_2 {
 		return keepPlot;
 	}
 
-
-	public static void main(String[] args)throws Exception{
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// input --> GUI-Erfassung, hier nur hilfsweise für self-contained example
-		// input stuff
-		//File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\_TestData\\Globcover2009_V2.3_Global\\GLOBCOVER_L4_200901_200912_V2.3.tif"); // GUI-Erfassung
-		File rasterFile = new File("D:\\_HCU\\_Masterarbeit\\_TestData\\weightraster\\fictive_weightraster.tif"); // GUI-Erfassung
-		File shapeFile = new File("D:\\_HCU\\_Masterarbeit\\_TestData\\TestSmallPolygons\\TestSmallPolygons.shp"); // GUI-Erfassung
-		String sampleColumn = "VEGZONE"; // GUI-Erfassung
-		String clipStratum = "irregular"; // GUI-Erfassung
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		
-		
-		
-		
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//clip(crop) raster:
-// read raster
-GridCoverage2D coverage = readGeoTiff(rasterFile);
-// get Geometries to be clipped from the raster
-ArrayList<Geometry> clipGeometries = getClipGeometries(coverage, shapeFile, sampleColumn, clipStratum);
-// clip raster using clipGeometries
-GridCoverage2D clippedCoverage = getClippedCoverage(clipGeometries, coverage);
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-
-
-		
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//create Plot -> hier nur hilfsweise für self-contained example, kommt aus Sampling Tool
-		FileDataStore dataStore = FileDataStoreFinder.getDataStore(shapeFile);
-		SimpleFeatureSource featureSource = dataStore.getFeatureSource(); // wird benötigt, um an einzelne Features ranzukommen (Feature = Zeile in SHP Attribute Table)
-		SimpleFeatureCollection collection = featureSource.getFeatures();
-
-		
-		CoordinateReferenceSystem crsRaster = coverage.getCoordinateReferenceSystem();
-
-		GeometryFactory geometryFactory = JTSFactoryFinder.getGeometryFactory( null );
-		Coordinate coord = new Coordinate( 795989.242986, 609624.337442 );
-		Point point = geometryFactory.createPoint( coord );
-		Plot plot = new Plot(point, "",  crsRaster); // wie komme ich an WGS84 CRS? --> vl über SHP
-////////////////////////////////////////////////////////////////////////
-		
-		
-		
-		
-
-
-		
-
-		
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// this is the central code line!!!
-		
-		//test mit floating point und int rasters
-		
-		
-		double pixelValue = 0;
-		// find out raster pixel value number type before calling getValueAtPosition() method
-		final int dataType = coverage.getRenderedImage().getSampleModel().getDataType();
-		switch (dataType) {
-		case DataBuffer.TYPE_BYTE:   byte[] pixelValueByte = getValueAtPosition(coverage, plot, (byte  []) null);
-		pixelValue = (double)pixelValueByte[0];
-		break;
-		case DataBuffer.TYPE_DOUBLE: double[] pixelValueDouble = getValueAtPosition(coverage, plot, (double  []) null);
-		pixelValue = (double)pixelValueDouble[0];
-		break;
-		default: throw new CannotEvaluateException("Raster with unknown pixel value number format");
-		}
-
-//		//Vorlage: 
-//		/**
-//	     * Returns the value vector for a given location (world coordinates).
-//	     * A value for each sample dimension is included in the vector.
-//	     */
-//	    public Object evaluate(final DirectPosition point) throws CannotEvaluateException {
-//	        final int dataType = image.getSampleModel().getDataType();
-//	        switch (dataType) {
-//	            case DataBuffer.TYPE_BYTE:   return evaluate(point, (byte  []) null);
-//	            case DataBuffer.TYPE_SHORT:  // Fall through
-//	            case DataBuffer.TYPE_USHORT: // Fall through
-//	            case DataBuffer.TYPE_INT:    return evaluate(point, (int   []) null);
-//	            case DataBuffer.TYPE_FLOAT:  return evaluate(point, (float []) null);
-//	            case DataBuffer.TYPE_DOUBLE: return evaluate(point, (double[]) null);
-//	            default: throw new CannotEvaluateException();
-//	        }
-//	    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-	
-
-		
-		
-		
-		
-		
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		double noDataValue = getNoDataValue(coverage, 0); // second param is the band index (weight raster should only have 1 band, so index is 0)
-		double maxValue = getCoverageMaxValue(clippedCoverage, 0); // second param is the band index (weight raster should only have 1 band, so index is 0)
-		double sum = getCoverageSum(clippedCoverage, 0); // only for pdf sampling report (?) // second param is the band index
-		// normalize pixel value using maxValue
-		double normalizedPixelValue =  pixelValue / maxValue; // make pixelValue be in the range 0-1
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		
-		
-		
-		//writeGeoTiff("D:\\_HCU\\_Masterarbeit\\_TestData\\TestClip\\TestClipIrregular.tif", clippedCoverage);
-		
-		// rejection test
-		boolean keepPlot = rejectionTesting(normalizedPixelValue);
-		
-		
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		System.out.println("input raster: " + rasterFile.toString());
-		System.out.println("shapeFile: " + shapeFile.toString());
-		System.out.println("Stratum: " + clipStratum.toString());
-		System.out.println("Plot X: " + point.getX());
-		System.out.println("Plot Y: " + point.getY());
-		if (pixelValue == noDataValue){
-			System.out.println("Error: pixelValue == noDataValue! ");
-		}
-		System.out.println("Raster pixel Value at Plot location: " + pixelValue);
-		System.out.println("noDataValue: " + noDataValue);
-		System.out.println("maxValue for stratum area: " + maxValue);
-		System.out.println("sum of all pixel values for stratum area: " + sum);	
-		System.out.println("normalizedPixelValue: " + normalizedPixelValue);
-		System.out.println("rejection test: " + keepPlot);
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-		
-	}
 }
