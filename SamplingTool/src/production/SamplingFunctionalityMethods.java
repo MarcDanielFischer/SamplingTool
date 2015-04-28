@@ -15,6 +15,7 @@ import java.util.List;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
+import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.data.FileDataStore;
 import org.geotools.data.FileDataStoreFinder;
 import org.geotools.data.simple.SimpleFeatureCollection;
@@ -48,10 +49,11 @@ public class SamplingFunctionalityMethods {
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
 	// TODO die ganzen input params evtl als ParameterValueGroup (Key-Value_Pair) übergeben
-	public static void runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize ) throws Exception {
+	public static void runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize, boolean weightedSampling, File inputRasterFile ) throws Exception {
 
+		// TODO getFeatures() probably not necessary --> just iterate is enough 
 		// get all features in the shapefile
-		ArrayList<SimpleFeature> allFeatures = getFeatures(inputFile); // dieser SChritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
+		ArrayList<SimpleFeature> allFeatures = getFeatures(inputFile); // dieser Schritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
 
 		// filter selected features
 		ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
@@ -162,8 +164,10 @@ public class SamplingFunctionalityMethods {
 			
 			ArrayList<Plot> clusterSeedPoints = null; // must initialize variable outside if block so that it is visible in other if blocks
 			
-			// Simple random sample
-			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING){
+			// create simple Plots first (random or systematic)
+			
+			// Simple random sample, no weighted Sampling 
+			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING && weightedSampling == false){
 
 				// Plots are generated regardless of Clustering choice
 				ArrayList<Plot> simpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
@@ -176,6 +180,68 @@ public class SamplingFunctionalityMethods {
 				// in case of clustering use generated Plots as cluster seed points
 				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 					clusterSeedPoints = simpleRandomPlots;
+				}
+			}
+			
+			
+			///////////////////////////////////////////////////////////////////////////
+			// weighted Sampling 
+			///////////////////////////////////////////////////////////////////////////
+			// Simple random sample, weighted Sampling 
+			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING && weightedSampling == true){
+				// now here comes all the weight stuff
+				// how can all this go into a method on its own?
+				GridCoverage2D coverage = RasterProcessing.readGeoTiff(inputRasterFile);
+				ArrayList<Geometry> clipGeoms = new ArrayList<Geometry>();
+				clipGeoms.add(strataUTM.get(i).getGeometry());
+				// TODO prüfen: ist sicher, dass cllipGeoms gleiches CRS wie coverage haben??
+				GridCoverage2D clippedCoverage = RasterProcessing.getClippedCoverage(clipGeoms, coverage);
+				double maxValue = RasterProcessing.getCoverageMaxValue(clippedCoverage, 0);
+				double noDataValue = RasterProcessing.getNoDataValue(coverage, 0);
+				
+				// rejection testing: call  simpleRandomSampling() one at a time until desired number of plots is reached
+				/*
+				 * look at simpleRandomSampling() implementation more closely 
+				 * --> reduce processing costs by not calculating a stratum BBOX for every single plot etc.
+				 */
+				
+				ArrayList<Plot> weightedSimpleRandomPlots = new ArrayList<Plot>();
+				int numSampledPlots = 0;
+				do{
+					// create a Plot (one at a time, has to be rejection tested)
+					Plot plot = simpleRandomSampling(strataUTM.get(i), 1).get(0);
+					// get plot value 
+					double plotValue = RasterProcessing.getValueAtPosition(coverage, plot, (double[]) null)[0];
+					// throw exception if plot has nodata value
+					if(plotValue == noDataValue){
+						throw new Exception("Plot does not have a corresponding raster pixel value ");
+					}
+					// get plot weight 
+					double plotWeight = plotValue / maxValue;
+					// rejection test the plot
+					boolean keepPlot = RasterProcessing.rejectionTesting(plotWeight);
+					if(keepPlot == false){ //if plot is rejected, sample a new one
+						continue;
+					}else{
+						plot.setWeight(plotWeight);
+						weightedSimpleRandomPlots.add(plot);
+						numSampledPlots++;
+					}
+					
+				}
+				while(numSampledPlots < numPlotsToBeSampled[i]);
+				
+				// Plots are generated regardless of Clustering choice
+//				ArrayList<Plot> weightedSimpleRandomPlots = simpleRandomSampling(strataUTM.get(i), numPlotsToBeSampled[i]);
+
+				// in case of no clustering write generated Plots to output directly
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO){
+					outputPlots.addAll(weightedSimpleRandomPlots);
+				}
+
+				// in case of clustering use generated Plots as cluster seed points
+				if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+					clusterSeedPoints = weightedSimpleRandomPlots;
 				}
 			}
 
@@ -222,7 +288,7 @@ public class SamplingFunctionalityMethods {
 			}
 			
 			// ----------------------------------------------------------
-			// Cluster options
+			// make Clusters out of simple Plots if needed
 			
 			if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 
@@ -269,7 +335,7 @@ public class SamplingFunctionalityMethods {
 
 		// write output to file
 		File outputFile = getFile();
-		writeOutput(outputFile, outputPlots, clusterSampling);
+		writeOutput(outputFile, outputPlots, clusterSampling, weightedSampling);
 		}
 		
 	}
@@ -1538,30 +1604,31 @@ private static File getFile() throws Exception{
 	// muss ich hier nach der Programmierlogik eine Exception werfen
 	// TODO automatically add ".csv" file extension
 	JFileChooser saveFileDialog = new JFileChooser(); // JFileChooser kommt aus javax.swing und hat nichts mit GeoTools zu tun 
-		//    FileNameExtensionFilter filter = new FileNameExtensionFilter(
-		//        "CSV files", "csv");
-		//    chooser.setFileFilter(filter);
-		saveFileDialog.setDialogType(JFileChooser.SAVE_DIALOG);
-		if(saveFileDialog.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) { // return from method if users cancels the dialog (ie, user does not click on "Save"-Button)
+	saveFileDialog.setCurrentDirectory(new File("D:\\"));
+	//    FileNameExtensionFilter filter = new FileNameExtensionFilter(
+	//        "CSV files", "csv");
+	//    chooser.setFileFilter(filter);
+	saveFileDialog.setDialogType(JFileChooser.SAVE_DIALOG);
+	if(saveFileDialog.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) { // return from method if users cancels the dialog (ie, user does not click on "Save"-Button)
 		throw new Exception("SaveFileDialog cancelled without specifying an output file");
-		}
-		// create output file 
-		File saveFile = saveFileDialog.getSelectedFile();
-		if(saveFile.exists()){
-			int fileOverwriteChoice = JOptionPane.showConfirmDialog(null, "File already exists. Do you want to overwrite the existing file?");
-			if(fileOverwriteChoice == JOptionPane.YES_OPTION){
-				saveFile.createNewFile();
-			}else{
-				throw new Exception("you have chosen not to overwrite an existing file");
-			}
-
-		}else{
+	}
+	// create output file 
+	File saveFile = saveFileDialog.getSelectedFile();
+	if(saveFile.exists()){
+		int fileOverwriteChoice = JOptionPane.showConfirmDialog(null, "File already exists. Do you want to overwrite the existing file?");
+		if(fileOverwriteChoice == JOptionPane.YES_OPTION){
 			saveFile.createNewFile();
+		}else{
+			throw new Exception("you have chosen not to overwrite an existing file");
 		}
-		
-			
-		
-		return saveFile;
+
+	}else{
+		saveFile.createNewFile();
+	}
+
+
+
+	return saveFile;
 	}
 	
 	
@@ -1572,33 +1639,49 @@ private static File getFile() throws Exception{
 	 * @param clusterSampling needed in order to adapt file header (determine whether or not to add column "cluster_nr")
 	 * @throws Exception
 	 */
-	public static void writeOutput(File file, ArrayList<Plot> samplePlots, int clusterSampling) throws Exception{
+	public static void writeOutput(File file, ArrayList<Plot> samplePlots, int clusterSampling, boolean weightedSampling) throws Exception{
 		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
 
 		FileWriter fileWriter = new FileWriter(file, false); // second param is for appending to file (Yes/No) --> 
 		
 		// write file header
-		// adapt header for CLUSTER_SAMPLING_YES option
-		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){ 
-			fileWriter.write("\"X\",\"Y\",\"Cluster_nr\",\"Plot_nr\",\"Stratum\"\n");
-			
-		} else{
-			fileWriter.write("\"X\",\"Y\",\"Plot_nr\",\"Stratum\"\n"); // header without Clusters
+		// adapt file header for 4 different cluster sampling and weighted sampling option combinations:
+		
+		// false false
+		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO && weightedSampling == false){ 
+			fileWriter.write("\"Plot_nr\",\"X\",\"Y\",\"Stratum\"\n");
 		}
+		// true false
+		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES && weightedSampling == false){ 
+			fileWriter.write("\"Cluster_nr\",\"Plot_nr\",\"X\",\"Y\",\"Stratum\"\n");
+		}
+		// false true
+		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO && weightedSampling == true){ 
+			fileWriter.write("\"Plot_nr\",\"X\",\"Y\",\"Plot_weight\",\"Stratum\"\n");
+		}
+		// true true 
+		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES && weightedSampling == true){ 
+			fileWriter.write("\"Cluster_nr\",\"Plot_nr\",\"X\",\"Y\",\"Plot_weight\",\"Stratum\"\n");
+		}
+		
+		// write Plot number in the beginning
 		
 		
 		for(Plot plot : samplePlots){
-			
-			
-			double x = plot.getPoint().getCoordinate().x;
-			double y = plot.getPoint().getCoordinate().y;
-			fileWriter.write(Double.toString(x) + ",");
-			fileWriter.write(Double.toString(y) + ",");
 			// write clusterNr only to output if Cluster Sampling is the chosen sampling option
 			if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
 				fileWriter.write(Integer.toString(plot.getClusterNr())+ ",");
 			}
 			fileWriter.write(Integer.toString(plot.getPlotNr()) + ",");
+			double x = plot.getPoint().getCoordinate().x;
+			double y = plot.getPoint().getCoordinate().y;
+			fileWriter.write(Double.toString(x) + ",");
+			fileWriter.write(Double.toString(y) + ",");
+			
+			if(weightedSampling == true){
+				fileWriter.write(Double.toString(plot.getWeight()) + ",");
+			}
+			
 			fileWriter.write(plot.getStratumName() + "\n");
 			
 			
@@ -1632,7 +1715,7 @@ private static File getFile() throws Exception{
 }
 	
 	
-	
+
 	public static void writeOutput(File file, Point[] samplePlots, String selectedPolygon) throws Exception{
 		// Problem hier: für jede iteration wird das file ganz überschrieben
 		// --> ich will append, nicht overwrite
@@ -1648,8 +1731,8 @@ private static File getFile() throws Exception{
 			fileWriter.write(selectedPolygon + "\n");
 		}
 		fileWriter.close();
-}
-	
+	}
+
 	/**
 	 * TODO OBSOLET (?)
 	 * Writes the generated sample plots to output CSV file 
