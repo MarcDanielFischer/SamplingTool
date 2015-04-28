@@ -27,11 +27,14 @@ public class Plot {
 	private int plotNr;
 	private String stratumName;
 	private CoordinateReferenceSystem CRS;
+	private double weight;
 	
 
 	
 	// constructors (3 versions, 2 overloads in order to match variable input param number)
 	
+
+
 	/**
 	 * Constructs a Plot object without clusterNr or plotNr
 	 * @param point
@@ -111,6 +114,14 @@ public class Plot {
 
 	public void setCRS(CoordinateReferenceSystem CRS) {
 		this.CRS = CRS;
+	}
+	
+	public double getWeight() {
+		return weight;
+	}
+
+	public void setWeight(double weight) {
+		this.weight = weight;
 	}
 
 
