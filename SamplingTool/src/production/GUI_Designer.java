@@ -1,7 +1,3 @@
-/*
- *      
- *      
- */
 
 package production;
 
@@ -28,6 +24,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JList;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.JRadioButton;
+import java.awt.Font;
 
 
 @SuppressWarnings("serial")
@@ -35,10 +33,13 @@ public class GUI_Designer extends JFrame {
 	
 	// GUI components
 	private JPanel contentPane;
-	private JFileChooser openFileDialog;
+	private JFileChooser openShapeFileDialog;
+	private JFileChooser openRasterFileDialog;
 	private JButton btnBrowse;
 	private JButton btnRunSampling; 
 	private JButton btnClose;
+	private JButton btnSelectGeotiffRaster;
+	private JRadioButton rdbtnWeightedSampling;
 	private JTextField textField_Start_X;
 	private JTextField textField_Start_Y;
 	private JTextField textField_NumSubPlotsPerCluster;
@@ -65,6 +66,7 @@ public class GUI_Designer extends JFrame {
 	private JLabel lblStart_X;
 	private JLabel lblDist_y;
 	private JLabel lblBufferSize;
+	private JLabel lblRasterFile;
 	private JComboBox comboBox_StartingPoint;
 	private JComboBox comboBox_ClusterSampling;
 	private JComboBox comboBox_Columns;
@@ -80,7 +82,8 @@ public class GUI_Designer extends JFrame {
 	// alle nicht in jedem Fall benötigten Parameter habe ich schon hier initialisiert,
 	// weil (momentan) immer alle Params an die Methode runSampling() übergeben werden
 	// und sie dafür initialisiert sein müssen
-	File inputFile;
+	File inputShapeFile;
+	File inputRasterFile;
 	String sampleColumn;
 	int numStrata;
 	String[] selectedStrata;
@@ -110,6 +113,7 @@ public class GUI_Designer extends JFrame {
 	int numClusterSubPlots = 0; // only for clusterSampling == YES
 	int distBetweenSubPlots = 0; // only for clusterSampling == YES
 	double bufferSize;
+	boolean weightedSampling = false; // make weighted Sampling not-default 
 	
 	
 	
@@ -121,6 +125,7 @@ public class GUI_Designer extends JFrame {
 	/**
 	 * Launch the application.
 	 */
+	//TODO evtl in eigene Klassa auslagern, die nur die Anwendung laufen lässt und sonst nichts.
 	public static void main(String[] args) {
 		// dieses ganze Gedöns mit EventQueue, invokeLater() und run() ist für die Programmausführung durch Threads gedacht
 		EventQueue.invokeLater(new Runnable() {
@@ -142,7 +147,8 @@ public class GUI_Designer extends JFrame {
 		// Application Window Settings
 		setTitle("Arbonaut Spatial Sampling Tool");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 644, 902);
+		setBounds(100, 100, 684, 902);
+		//TODO make GUI window scrollable 
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -152,7 +158,7 @@ public class GUI_Designer extends JFrame {
 		btnClose = new JButton("Close");
 		btnClose.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				System.exit(0); // evtl. checken, ob das die Option der Wahl ist
+				System.exit(0); // TODO evtl. checken, ob das die Option der Wahl ist
 			}
 		});
 		btnClose.setBounds(496, 800, 122, 23);
@@ -161,20 +167,22 @@ public class GUI_Designer extends JFrame {
 		
 		
 		// "Browse" button
-		btnBrowse = new JButton("Browse");
+		btnBrowse = new JButton("Select Shapefile");
 		btnBrowse.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				openFileDialog = new JFileChooser();
-				if(openFileDialog.showOpenDialog(null) == JFileChooser.APPROVE_OPTION){
-					inputFile = openFileDialog.getSelectedFile();
+				openShapeFileDialog = new JFileChooser();
+				// TODO change File Dialog start directory to c: oder d:
+				openShapeFileDialog.setCurrentDirectory(new File("D:\\_HCU\\_Masterarbeit\\_TestData"));
+				if(openShapeFileDialog.showOpenDialog(null) == JFileChooser.APPROVE_OPTION){
+					inputShapeFile = openShapeFileDialog.getSelectedFile();
 					// write input file path to Label (just for visualization purposes)
-					lblSelectedFile.setText(inputFile.toString());
+					lblSelectedFile.setText(inputShapeFile.toString());
 					
 					// write input SHP column names to comboBox_StratField immediately after File is selected
 					try{
 						// clear comboBox_StratField entries first if selected file has been changed
 						comboBox_Columns.removeAllItems();
-						String[] colNames = SamplingFunctionalityMethods.getSHPColNames(inputFile);
+						String[] colNames = SamplingFunctionalityMethods.getSHPColNames(inputShapeFile);
 						// add SHP column names to comboBox_StratField dropdown menu
 						for(String colName : colNames){
 							// TODO sort items alphabetically when adding them to comboBox_StratField
@@ -186,7 +194,7 @@ public class GUI_Designer extends JFrame {
 				}
 			}
 		});
-		btnBrowse.setBounds(10, 11, 89, 23);
+		btnBrowse.setBounds(10, 20, 152, 23);
 		contentPane.add(btnBrowse);
 		
 		
@@ -208,7 +216,7 @@ public class GUI_Designer extends JFrame {
 				if(selectedItem != "the_geom" && selectedItem != null){ // die Werte für Spalte the_geom sollen nicht ausgelesen werden
 					try{
 						// read values from specified column and write them to JList
-						ArrayList<String> strataNames = SamplingFunctionalityMethods.getColumnValues(inputFile, selectedItem);
+						ArrayList<String> strataNames = SamplingFunctionalityMethods.getColumnValues(inputShapeFile, selectedItem);
 						
 						strataNamesList = new JList(strataNames.toArray());
 						// insert JList into ScrollPane
@@ -374,6 +382,7 @@ public class GUI_Designer extends JFrame {
 		// "Run Sampling" Button 
 		btnRunSampling = new JButton("Run Sampling");
 		btnRunSampling.addActionListener(new ActionListener() {
+
 			public void actionPerformed(ActionEvent arg0) {
 				// alle eingetragenen Samplingparameter zusammentragen und auf die am Klassenanfang deklarierten Variablen schreiben
 				// TODO besseres Verfahren überlegen, die ganzen Samplingparameter zu übergeben (zu viele für eine einzelne Methode) --> Hashmap, eigenes Objekt nur für die Parameter?
@@ -385,7 +394,7 @@ public class GUI_Designer extends JFrame {
 				// TODO see if this type of bulletproofing the code can be achieved in a better way
 				boolean allParamsOK = true; // flag variable
 				
-				if(inputFile == null){
+				if(inputShapeFile == null){
 					JOptionPane.showMessageDialog(null, "Make sure you have selected a Shapefile");
 					allParamsOK = false;
 
@@ -543,7 +552,7 @@ public class GUI_Designer extends JFrame {
 				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
 				if(allParamsOK ){ 
 					try{
-						SamplingFunctionalityMethods.runSampling(inputFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize ); 
+						SamplingFunctionalityMethods.runSampling(inputShapeFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize, weightedSampling, inputRasterFile ); 
 					}catch(Exception e){
 						JOptionPane.showMessageDialog(null, e.toString());
 					}	
@@ -692,7 +701,7 @@ public class GUI_Designer extends JFrame {
 				//-----------------------------------------------------------------------------------------
 				// Labels
 				lblSelectedFile = new JLabel("No File selected yet");
-				lblSelectedFile.setBounds(92, 33, 448, 30);
+				lblSelectedFile.setBounds(92, 40, 448, 30);
 				contentPane.add(lblSelectedFile);
 				
 				lblSubplotsVerticalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
@@ -721,7 +730,7 @@ public class GUI_Designer extends JFrame {
 				contentPane.add(lblStart_Y);
 
 				lblNewLabel = new JLabel("Selected File:");
-				lblNewLabel.setBounds(10, 33, 82, 30);
+				lblNewLabel.setBounds(10, 40, 82, 30);
 				contentPane.add(lblNewLabel);
 				
 				lbl_SelectColumn = new JLabel("Choose one of the Shapefile Column Names for Strata Selection:");
@@ -768,6 +777,56 @@ public class GUI_Designer extends JFrame {
 				lblBufferSize = new JLabel("<html><body>Plot Radius<br>(minimum Distance <br>to Stratum boundary):</body></html>");
 				lblBufferSize.setBounds(449, 376, 229, 53);
 				contentPane.add(lblBufferSize);
+				
+				
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// neu weighted Sampling
+				lblRasterFile = new JLabel("");
+				lblRasterFile.setFont(new Font("Tahoma", Font.PLAIN, 10));
+				lblRasterFile.setEnabled(false);
+				lblRasterFile.setBounds(300, 65, 360, 14);
+				contentPane.add(lblRasterFile);
+				
+				btnSelectGeotiffRaster = new JButton("Select GeoTIFF Raster File");
+				btnSelectGeotiffRaster.setEnabled(false);
+				btnSelectGeotiffRaster.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						openRasterFileDialog = new JFileChooser();
+						// TODO change File Dialog start directory to c: oder d:
+						openRasterFileDialog.setCurrentDirectory(new File("D:\\_HCU\\_Masterarbeit\\_TestData"));
+						if(openRasterFileDialog.showOpenDialog(null) == JFileChooser.APPROVE_OPTION){
+							inputRasterFile = openRasterFileDialog.getSelectedFile();
+							// write input file path to Label (just for visualization purposes)
+							lblRasterFile.setText(inputRasterFile.toString());
+							
+						}
+						
+					}
+				});
+				btnSelectGeotiffRaster.setBounds(378, 33, 183, 23);
+				contentPane.add(btnSelectGeotiffRaster);
+				
+
+				
+				rdbtnWeightedSampling = new JRadioButton("Weighted Sampling");
+				rdbtnWeightedSampling.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						if(rdbtnWeightedSampling.isSelected()){
+							btnSelectGeotiffRaster.setEnabled(true);
+							lblRasterFile.setEnabled(true);
+							weightedSampling = true;
+						}else{
+							btnSelectGeotiffRaster.setEnabled(false);
+							lblRasterFile.setEnabled(false);
+							weightedSampling = false;
+						}
+						
+					}
+				});
+				rdbtnWeightedSampling.setBounds(389, 10, 128, 23);
+				contentPane.add(rdbtnWeightedSampling);
+////////////////////////////////////////////////////////////////////////////////////////////////////				
+
 				// End Labels
 				//-----------------------------------------------------------------------------------------
 	}
