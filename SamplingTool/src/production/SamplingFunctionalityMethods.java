@@ -49,11 +49,11 @@ public class SamplingFunctionalityMethods {
 	 * and delegates to specific methods (eg, Cluster Building) 
 	 */
 	// TODO die ganzen input params evtl als ParameterValueGroup (Key-Value_Pair) übergeben
-	public static void runSampling(File inputFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize, boolean weightedSampling, File inputRasterFile ) throws Exception {
+	public static void runSampling(File inputShapeFile, String sampleColumn, String[] selectedStrata, int samplingDesign,  int[] numPlotsToBeSampled, int gridDistX, int gridDistY, int startingPoint, double startX, double startY, int clusterSampling, int clusterShape, int numSubPlotsinHVerticalLine, int numSubPlotsinHhorizontalLine, int numClusterSubPlots, int distBetweenSubPlots, double bufferSize, boolean weightedSampling, File inputRasterFile ) throws Exception {
 
 		// TODO getFeatures() probably not necessary --> just iterate is enough 
 		// get all features in the shapefile
-		ArrayList<SimpleFeature> allFeatures = getFeatures(inputFile); // dieser Schritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
+		ArrayList<SimpleFeature> allFeatures = getFeatures(inputShapeFile); // dieser Schritt könnte performancegefährdend sein, weil ALLE features eingelsen werden --> evtl ändern
 
 		// filter selected features
 		ArrayList<SimpleFeature> selectedFeatures = new ArrayList<SimpleFeature>();
@@ -118,7 +118,7 @@ public class SamplingFunctionalityMethods {
 
 		// reproject selected features to UTM
 		// read input SHP CRS (sourceCRS)
-		CoordinateReferenceSystem sourceCRS = getCRS(inputFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
+		CoordinateReferenceSystem sourceCRS = getCRS(inputShapeFile); // note: there is only ONE source CRS, as a shapefile has only one associated .prj file
 
 
 		// iterate over selected features, convert them to UTM(more specifically, only their geometries, as other attribs are irrelevant here),
@@ -189,12 +189,23 @@ public class SamplingFunctionalityMethods {
 			///////////////////////////////////////////////////////////////////////////
 			// Simple random sample, weighted Sampling 
 			if(samplingDesign == GUI_Designer.SIMPLE_RANDOM_SAMPLING && weightedSampling == true){
-				// now here comes all the weight stuff
-				// how can all this go into a method on its own?
+				// TODO: weighted Sampling: how can all this go into a method on its own?
 				GridCoverage2D coverage = RasterProcessing.readGeoTiff(inputRasterFile);
-				ArrayList<Geometry> clipGeoms = new ArrayList<Geometry>();
-				clipGeoms.add(strataUTM.get(i).getGeometry());
-				// TODO prüfen: ist sicher, dass cllipGeoms gleiches CRS wie coverage haben??
+				
+				
+				//ArrayList<Geometry> clipGeoms = new ArrayList<Geometry>();
+				//CRS: UTM  //  clipGeoms.add(strataUTM.get(i).getGeometry()); // gibt nur 1 Geometry pro Stratum, weil schon zusammengefasst zu MultiPolygon bei MultiPolyStrata
+				
+				
+				// die Geometries sind hier schon alle zu UTM konvertiert (verschieden Zonen, je nach Lage)
+				// --> ich könnte sie wieder zurückkonvertieren, aber das wäre irgendwie blöd
+				// gibts die auch noch im Original? und was ist dann mit den MultiPolyStrata?
+				// RasterProcessing.getClipGeometries() holt die Geometries nochmal frisch aus dem
+				// SHP raus und reprojected sie zum rasterCRS und kommt auch mit MultiPolyStrata gut klar
+				ArrayList<Geometry> clipGeoms = RasterProcessing.getClipGeometries(coverage.getCoordinateReferenceSystem(), inputShapeFile, sampleColumn, strataUTM.get(i).getName());
+				
+				
+				// TODO prüfen: ist sicher, dass cllipGeoms gleiches CRS wie coverage haben?? --> nein
 				GridCoverage2D clippedCoverage = RasterProcessing.getClippedCoverage(clipGeoms, coverage);
 				double maxValue = RasterProcessing.getCoverageMaxValue(clippedCoverage, 0);
 				double noDataValue = RasterProcessing.getNoDataValue(coverage, 0);

@@ -121,14 +121,14 @@ public class RasterProcessing {
 	 * If the input SHP does not have the same CRS as the input raster,
 	 * the Geometries are converted to the raster CRS.
 	 * 
-	 * @param coverage
+	 * @param crsRaster needed to determine whether Geometries need to be reprojected to match the raster CRS 
 	 * @param shapeFile
 	 * @param sampleColumn
 	 * @param clipStratum
 	 * @return
 	 * @throws Exception
 	 */
-	public static ArrayList<Geometry> getClipGeometries (GridCoverage2D coverage, File shapeFile, String sampleColumn, String clipStratum) throws Exception{
+	public static ArrayList<Geometry> getClipGeometries (CoordinateReferenceSystem crsRaster, File shapeFile, String sampleColumn, String clipStratum) throws Exception{
 		// connect to Shapefile
 		FileDataStore dataStore = FileDataStoreFinder.getDataStore(shapeFile);
 		SimpleFeatureSource featureSource = dataStore.getFeatureSource(); // wird benötigt, um an einzelne Features ranzukommen (Feature = Zeile in SHP Attribute Table)
@@ -136,7 +136,6 @@ public class RasterProcessing {
 
 		// check if CRS from SHP and Raster are different
 		CoordinateReferenceSystem crsFeatures = featureSource.getSchema().getCoordinateReferenceSystem();
-		CoordinateReferenceSystem crsRaster = coverage.getCoordinateReferenceSystem();
 		boolean needsReproject = !CRS.equalsIgnoreMetadata(crsFeatures, crsRaster);
 		MathTransform transform = CRS.findMathTransform(crsFeatures, crsRaster, true);
 
