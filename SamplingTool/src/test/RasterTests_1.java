@@ -108,7 +108,7 @@ import org.geotools.util.NumberRange;
 import org.jaitools.media.jai.zonalstats.ZonalStatsDescriptor;
 import org.jaitools.numeric.SampleStats;
 
-import production.SamplingFunctionalityMethods;
+import production.Sampling;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;

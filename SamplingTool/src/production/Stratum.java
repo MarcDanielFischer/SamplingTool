@@ -1,14 +1,3 @@
-/**
- * This class is used to store the strata used in the sampling process as an object type of its own.
- * The reason we do it this way is that using the Stratum class we can easily associate additional properties
- * to the Geometry. 
- *  
- *  - The CRS property is needed so that it can be passed on to the sample Plots which can then be reprojected to 
- *  LatLon using this CRS information
- *  
- *  -  The name property is also used to be passed on to the sample Plots and will be retrieved and written to the output file.
- */
-
 
 package production;
 
@@ -16,6 +5,16 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 import com.vividsolutions.jts.geom.Geometry;
 
+/**
+ * This class is used to store the strata used in the sampling process as an object type of its own.
+ * The reason we do it this way is that using the Stratum class we can easily associate additional properties
+ * to a Geometry. 
+ *  
+ * The CRS property is needed so that it can be passed on to the sample Plots which can then be reprojected to 
+ * LatLon using this CRS information.
+ *  
+ * The name property is also used to be passed on to the sample Plots and will be retrieved and written to the output file.
+ */
 public class Stratum {
 	
 	// properties

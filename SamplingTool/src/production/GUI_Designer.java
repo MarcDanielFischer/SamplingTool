@@ -28,6 +28,20 @@ import javax.swing.JRadioButton;
 import java.awt.Font;
 
 
+/**
+ * This class is responsible for the GUI the user interacts with and was created using the Eclipse Window Builder
+ * plug-in.
+ * The GUI itself is merely a form needed to record all the sampling parameters that will be used later to perform
+ * the actual sampling operation. It implements the sampling logic, e.g., according to user selections,
+ * controls are being enabled or disabled guiding the user to specify all required input parameter along 
+ * a given path.
+ * 
+ * The GUI is just for demonstration purposes of the functionality provided by the classes in this package
+ * and will not be used by arbonaut in their final product!
+ * 
+ * @author daniel
+ *
+ */
 @SuppressWarnings("serial")
 public class GUI_Designer extends JFrame {
 	
@@ -182,7 +196,7 @@ public class GUI_Designer extends JFrame {
 					try{
 						// clear comboBox_StratField entries first if selected file has been changed
 						comboBox_Columns.removeAllItems();
-						String[] colNames = SamplingFunctionalityMethods.getSHPColNames(inputShapeFile);
+						String[] colNames = ShapeFileUtilities.getSHPColNames(inputShapeFile);
 						// add SHP column names to comboBox_StratField dropdown menu
 						for(String colName : colNames){
 							// TODO sort items alphabetically when adding them to comboBox_StratField
@@ -216,7 +230,7 @@ public class GUI_Designer extends JFrame {
 				if(selectedItem != "the_geom" && selectedItem != null){ // die Werte für Spalte the_geom sollen nicht ausgelesen werden
 					try{
 						// read values from specified column and write them to JList
-						ArrayList<String> strataNames = SamplingFunctionalityMethods.getColumnValues(inputShapeFile, selectedItem);
+						ArrayList<String> strataNames = ShapeFileUtilities.getSHPColumnValues(inputShapeFile, selectedItem);
 						
 						strataNamesList = new JList(strataNames.toArray());
 						// insert JList into ScrollPane
@@ -552,7 +566,7 @@ public class GUI_Designer extends JFrame {
 				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
 				if(allParamsOK ){ 
 					try{
-						SamplingFunctionalityMethods.runSampling(inputShapeFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize, weightedSampling, inputRasterFile ); 
+						Sampling.runSampling(inputShapeFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize, weightedSampling, inputRasterFile ); 
 					}catch(Exception e){
 						JOptionPane.showMessageDialog(null, e.toString());
 					}	
@@ -833,6 +847,10 @@ public class GUI_Designer extends JFrame {
 	
 	
 	
+	/**
+	 * Disable certain GUI controls in order to let the user know which parameters 
+	 * need or need not to be specified for a particular sampling parameter combination. 
+	 */
 	private void disableSamplingDesignControls(){
 		lblDist_x.setEnabled(false);
 		lblDist_y.setEnabled(false);
@@ -846,6 +864,10 @@ public class GUI_Designer extends JFrame {
 		comboBox_StartingPoint.setEnabled(false);		
 	}
 	
+	/**
+	 * Disable certain GUI controls in order to let the user know which parameters 
+	 * need or need not to be specified for a particular sampling parameter combination. 
+	 */
 	private void disableClusterControls(){
 		lblClusterDesign.setEnabled(false);
 		comboBox_ClusterDesign.setEnabled(false);
@@ -856,4 +878,5 @@ public class GUI_Designer extends JFrame {
 		lblSubplotsVerticalLine.setEnabled(false);
 		textField_H_numPlotsVertical.setEnabled(false);
 	}
+
 }

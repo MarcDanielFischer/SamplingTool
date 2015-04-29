@@ -1,3 +1,11 @@
+
+
+package production;
+
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
+import com.vividsolutions.jts.geom.Point;
+
 /**
  * This class is used to store the output plots created in the sampling process.
  * The main point in creating a class on its own for the output plots is that
@@ -12,13 +20,6 @@
  * The reason we need the CRS property is that the plot must be be reprojected to LatLon before writing it to the output file.
  * The stratum property is needed because we want to write it as additional information to the output file, too.
  */
-
-package production;
-
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
-
-import com.vividsolutions.jts.geom.Point;
-
 public class Plot {
 	
 	// properties
@@ -36,7 +37,7 @@ public class Plot {
 
 
 	/**
-	 * Constructs a Plot object without clusterNr or plotNr
+	 * Constructs a Plot object without clusterNr or plotNr.
 	 * @param point
 	 * @param stratumName
 	 * @param CRS

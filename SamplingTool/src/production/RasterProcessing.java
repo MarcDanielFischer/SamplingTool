@@ -38,18 +38,23 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 
+/**
+ * This class contains static methods to process raster data used in weighted sampling.
+ * @author daniel
+ *
+ */
 public class RasterProcessing {
 
 
 	/**
-	 * Find raster pixel value at given Plot location.
+	 * Queries raster pixel values at given Plot location.
 	 * This method is overloaded so that it fits both raster files with integer as well as floating point values.
-	 * - works with multiband rasters too
-	 * http://docs.geotools.org/latest/userguide/library/coverage/grid.html
-	 * @param coverage
-	 * @param plot
-	 * @param dest
-	 * @return
+	 * Works with multiband rasters, too.
+	 * {@link http://docs.geotools.org/latest/userguide/library/coverage/grid.html}
+	 * @param coverage the input raster
+	 * @param plot position at which the raster shall be queried
+	 * @param dest specifies a raster with integer values (range 0-255)
+	 * @return array containing raster pixel values for all bands at the specified position. 
 	 * @throws Exception
 	 */
 	public static byte[] getValueAtPosition(GridCoverage2D coverage, Plot plot, byte[] dest) throws Exception{
@@ -71,15 +76,16 @@ public class RasterProcessing {
 	}
 	
 	
+	
 	/**
-	 * Find raster pixel value at given Plot location.
+	 * Queries raster pixel values at given Plot location.
 	 * This method is overloaded so that it fits both raster files with integer as well as floating point values.
-	 * - works with multiband rasters too
-	 * http://docs.geotools.org/latest/userguide/library/coverage/grid.html
-	 * @param coverage
-	 * @param plot
-	 * @param dest
-	 * @return
+	 * Works with multiband rasters, too.
+	 * {@link http://docs.geotools.org/latest/userguide/library/coverage/grid.html}
+	 * @param coverage the input raster
+	 * @param plot position at which the raster shall be queried
+	 * @param dest specifies a raster with floating-point values (double type)
+	 * @return array containing raster pixel values for all bands at the specified position. 
 	 * @throws Exception
 	 */
 	public static double[] getValueAtPosition(GridCoverage2D coverage, Plot plot, double[] dest) throws Exception{
@@ -103,7 +109,7 @@ public class RasterProcessing {
 	
 	/**
 	 * Writes a GridCoverage2D to the specified output file path.
-	 * https://svn.osgeo.org/geotools/trunk/modules/plugin/geotiff/src/test/java/org/geotools/gce/geotiff/GeoTiffWriterTest.java 
+	 * {@linkhttps://svn.osgeo.org/geotools/trunk/modules/plugin/geotiff/src/test/java/org/geotools/gce/geotiff/GeoTiffWriterTest.java} 
 	 * @param outputFilePath
 	 * @param coverage
 	 * @throws IOException
