@@ -2,13 +2,20 @@ package production;
 
 import java.util.ArrayList;
 
+import org.geotools.feature.simple.SimpleFeatureImpl;
 import org.geotools.geometry.jts.JTS;
+import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.geometry.BoundingBox;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.MathTransform;
 
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Polygon;
 
 
 /**
@@ -26,11 +33,60 @@ public class CRSUtilities {
 	 * @param feature
 	 * @return
 	 */
-	public static CoordinateReferenceSystem getTargetCRS(SimpleFeature feature) throws Exception{
+	public static CoordinateReferenceSystem getTargetUTM_CRS(SimpleFeature feature, CoordinateReferenceSystem featureCRS) throws Exception{
 		// find matching UTM zone for feature (UTM zones depend mainly on Longitude values)
-		BoundingBox boundingBox = feature.getBounds();
-		double lonMin = boundingBox.getMinX();
-		double lonMax = boundingBox.getMaxX();
+		
+
+		
+		// boundingBox must have latLong values in order to derive an UTM zone
+		// that makes sense
+		// --> convert BBOX to WGS84 CRS if needed
+		
+		// how to find Default Geographic CRS in Geotools? --> see tutorial
+		// CRS.decode("EPSG:4326");
+		// DefaultGeographicCRS.WGS84;`
+		
+		// check if CRS from Plot and Raster are different and reproject if needed
+		System.setProperty("org.geotools.referencing.forceXY", "true"); // sonst werden evtl X und Y vertauscht
+		CoordinateReferenceSystem standardGeographicCRS = CRS.decode("EPSG:4326");
+		boolean needsReproject = !CRS.equalsIgnoreMetadata(standardGeographicCRS, featureCRS);
+		
+		double lonMin;
+		double lonMax;
+		double latMin;
+		double latMax;
+		
+		if(needsReproject){
+			MathTransform transform = CRS.findMathTransform(featureCRS, standardGeographicCRS, true);
+			Geometry geom1 = (Geometry)feature.getAttribute( "the_geom" );
+			Geometry geom2 = JTS.transform(geom1, transform);
+			// feature.setDefaultGeometry(geom2); // schlecht --> permanent change, auch bei copied feature
+			// wie komme ich an minX etc. über Geometry?
+			Envelope envelope = null;
+			if(geom2 instanceof Polygon){
+				geom2 = (Polygon) geom2;
+				envelope = geom2.getEnvelopeInternal();
+			}else if(geom2 instanceof MultiPolygon){
+				geom2 = (MultiPolygon) geom2;
+				envelope = geom2.getEnvelopeInternal();
+			}else{
+				throw new Exception("Feature Geometry is neither a Polygon nor a MultiPolygon object");
+			}
+			lonMin = envelope.getMinX();
+			lonMax = envelope.getMaxX();
+			latMin = envelope.getMinY();
+			latMax = envelope.getMaxY();
+		}else{ // if there is no need for reprojection (feature CRS == EPSG:4326)
+			BoundingBox boundingBox = feature.getBounds(); // runtime class: ReferencedEnvelope
+			
+			lonMin = boundingBox.getMinX();
+			lonMax = boundingBox.getMaxX();
+			latMin = boundingBox.getMinY();
+			latMax = boundingBox.getMaxY();
+		}
+		
+		
+		
 
 		int zoneMin = long2UTM(lonMin);
 		int zoneMax = long2UTM(lonMax);
@@ -59,8 +115,7 @@ public class CRSUtilities {
 		// --> Testen
 		// (dann evtl mit UTM-Südzonen probieren, die haben false northing, da gibts keine negativen Werte)
 
-		double latMin = boundingBox.getMinY();
-		double latMax = boundingBox.getMaxY();
+		
 		double latMean = (latMin + latMax)/2;
 
 		/*
