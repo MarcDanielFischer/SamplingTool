@@ -9,7 +9,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 
 /**
- * This class contains static methods to construct cluster plots using cluster 
+ * This class provides static methods to construct cluster plots using cluster 
  * seed points as input data. 
  * @author daniel
  *
@@ -39,6 +39,7 @@ public class Clusters {
 			seedPoint.setClusterNr(clusterNr);
 			seedPoint.setPlotNr(subPlotNr);
 			
+			
 			// add each seed point to output after changing its numbering
 			outputPlots.add(seedPoint);
 			
@@ -60,6 +61,11 @@ public class Clusters {
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					
 				}
@@ -144,6 +150,11 @@ public class Clusters {
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						subPlotNr++;
 						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 				}
@@ -166,6 +177,11 @@ public class Clusters {
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						subPlotNr++;
 						Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 				}
@@ -246,6 +262,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 
@@ -266,6 +287,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 
@@ -291,6 +317,11 @@ public class Clusters {
 						// subPlotNr++; // as this is the first subPlot, we don´t want to increase subPlotNr yet 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointFirstPlotRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 
 					}
@@ -306,6 +337,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 
 						}
@@ -329,6 +365,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointFirstPlotLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 
 					}
@@ -344,6 +385,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 
 						}
@@ -382,6 +428,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointCentralPlotRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 
@@ -395,6 +446,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -412,6 +468,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -432,6 +493,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointCentralPlotLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 
@@ -446,6 +512,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -464,6 +535,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -494,6 +570,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointStartPlotNorthRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 
@@ -507,6 +588,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -522,6 +608,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointStartPlotSouthRight, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 
@@ -535,6 +626,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -554,6 +650,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointStartPlotNorthLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 
@@ -567,6 +668,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -582,6 +688,11 @@ public class Clusters {
 						subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 						// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 						Plot plot = new Plot(pointStartPlotSouthLeft, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+						// check if there is a weight value and add it
+						double weight = seedPoint.getWeight();
+						if( weight != -1.0){
+							plot.setWeight(weight);
+						}
 						outputPlots.add(plot);
 					}
 
@@ -595,6 +706,11 @@ public class Clusters {
 							subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 							// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 							Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+							// check if there is a weight value and add it
+							double weight = seedPoint.getWeight();
+							if( weight != -1.0){
+								plot.setWeight(weight);
+							}
 							outputPlots.add(plot);
 						}
 					}
@@ -654,6 +770,11 @@ public class Clusters {
 			if(point.within(stratum.getGeometry())){
 				// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 				Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+				// check if there is a weight value and add it
+				double weight = seedPoint.getWeight();
+				if( weight != -1.0){
+					plot.setWeight(weight);
+				}
 				outputPlots.add(plot);
 				subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 			}
@@ -671,6 +792,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -689,6 +815,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -707,6 +838,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -725,6 +861,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					Plot plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -778,6 +919,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -791,6 +937,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -804,6 +955,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}
@@ -817,6 +973,11 @@ public class Clusters {
 				if(point.within(stratum.getGeometry())){
 					// a plot contains -aside from the Point object as a property - the name of the stratum it is located in and CRS information
 					plot = new Plot(point, stratum.getName(), stratum.getCRS(), subPlotNr, clusterNr);
+					// check if there is a weight value and add it
+					double weight = seedPoint.getWeight();
+					if( weight != -1.0){
+						plot.setWeight(weight);
+					}
 					outputPlots.add(plot);
 					subPlotNr++; // increase subPlotNr only if generated point falls within Geometry and is succesfully added to output 
 				}

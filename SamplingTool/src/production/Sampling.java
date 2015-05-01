@@ -152,19 +152,19 @@ public class Sampling {
 		ArrayList<Stratum> strataUTM= new ArrayList<Stratum>();
 
 		for(SimpleFeature currentFeature : selectedFeatures){
-			CoordinateReferenceSystem targetCRS = CRSUtilities.getTargetCRS(currentFeature); // targetCRS:in UTM projection
+			CoordinateReferenceSystem targetUTM_CRS = CRSUtilities.getTargetUTM_CRS(currentFeature, sourceCRS); // targetCRS:in UTM projection
 			// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
-			MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
+			MathTransform transform = CRS.findMathTransform(sourceCRS, targetUTM_CRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
 			// get feature Geometry
 			Geometry sourceGeometry = (Geometry) currentFeature.getAttribute( "the_geom" );
 			// convert Geometry to target CRS
-			Geometry targetGeometry = JTS.transform( sourceGeometry, transform);
+			Geometry utmGeometry = JTS.transform( sourceGeometry, transform);
 
 			// apply negative buffer to targetGeometry before creating Stratum object with it and starting the actual sampling process 
-			Geometry bufferGeometry = targetGeometry.buffer(-bufferSize);
+			Geometry bufferedUTMGeometry = utmGeometry.buffer(-bufferSize);
 
 			// make a Stratum object out of the targetGeometry that holds additional information (CRS, stratumName )
-			Stratum stratum = new Stratum(bufferGeometry, targetCRS, (String)currentFeature.getAttribute(sampleColumn));
+			Stratum stratum = new Stratum(bufferedUTMGeometry, targetUTM_CRS, (String)currentFeature.getAttribute(sampleColumn));
 			strataUTM.add(stratum);
 		}
 
@@ -217,20 +217,14 @@ public class Sampling {
 				GridCoverage2D coverage = RasterProcessing.readGeoTiff(inputRasterFile);
 				
 				
-				//ArrayList<Geometry> clipGeoms = new ArrayList<Geometry>();
-				//CRS: UTM  //  clipGeoms.add(strataUTM.get(i).getGeometry()); // gibt nur 1 Geometry pro Stratum, weil schon zusammengefasst zu MultiPolygon bei MultiPolyStrata
-				
-				
 				// die Geometries sind hier schon alle zu UTM konvertiert (verschieden Zonen, je nach Lage)
 				// --> ich könnte sie wieder zurückkonvertieren, aber das wäre irgendwie blöd
 				// gibts die auch noch im Original? und was ist dann mit den MultiPolyStrata?
 				// RasterProcessing.getClipGeometries() holt die Geometries nochmal frisch aus dem
 				// SHP raus und reprojected sie zum rasterCRS und kommt auch mit MultiPolyStrata gut klar
 				ArrayList<Geometry> clipGeoms = RasterProcessing.getClipGeometries(coverage.getCoordinateReferenceSystem(), inputShapeFile, sampleColumn, strataUTM.get(i).getName());
-				
-				
-				// TODO prüfen: ist sicher, dass cllipGeoms gleiches CRS wie coverage haben?? --> nein
 				GridCoverage2D clippedCoverage = RasterProcessing.getClippedCoverage(clipGeoms, coverage);
+				
 				double maxValue = RasterProcessing.getCoverageMaxValue(clippedCoverage, 0);
 				double noDataValue = RasterProcessing.getNoDataValue(coverage, 0);
 				
@@ -244,8 +238,14 @@ public class Sampling {
 				int numSampledPlots = 0;
 				do{
 					// create a Plot (one at a time, has to be rejection tested)
+					/**
+					 * TODO simpleRandomSampling() berechnet hier für jeden einzelnen 
+					 * plot neu die BBOX vom gleichen Stratum --> könnte ich 
+					 * auf einmal verkürzen, spart vl Rechenzeit
+					 */
 					Plot plot = simpleRandomSampling(strataUTM.get(i), 1).get(0);
 					// get plot value 
+					// TODO warum geht double[] hier auch für ganzzahlige Rasters? --> debug step through
 					double plotValue = RasterProcessing.getValueAtPosition(coverage, plot, (double[]) null)[0];
 					// throw exception if plot has nodata value
 					if(plotValue == noDataValue){
@@ -258,9 +258,11 @@ public class Sampling {
 					if(keepPlot == false){ //if plot is rejected, sample a new one
 						continue;
 					}else{
+						numSampledPlots++;
+						plot.setPlotNr(numSampledPlots);
 						plot.setWeight(plotWeight);
 						weightedSimpleRandomPlots.add(plot);
-						numSampledPlots++;
+						
 					}
 					
 				}

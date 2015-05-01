@@ -15,6 +15,11 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
+/**
+ * This class provides static methods to access data contained in Shapefiles.
+ * @author daniel
+ *
+ */
 public class ShapeFileUtilities {
 
 	

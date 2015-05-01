@@ -28,7 +28,7 @@ public class Plot {
 	private int plotNr;
 	private String stratumName;
 	private CoordinateReferenceSystem CRS;
-	private double weight;
+	private double weight = -1.0;
 	
 
 	

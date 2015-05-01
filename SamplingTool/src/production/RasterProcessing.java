@@ -198,7 +198,7 @@ public class RasterProcessing {
 	/**
 	 * Convenience method for reading GeoTIFF raster files.
 	 * @param rasterFile
-	 * @return
+	 * @return the GeoTIFF raster file as a GridCoverage2D object
 	 * @throws Exception
 	 */
 	public static GridCoverage2D readGeoTiff(File rasterFile) throws Exception{
