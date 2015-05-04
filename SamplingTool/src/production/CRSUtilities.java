@@ -27,48 +27,49 @@ import com.vividsolutions.jts.geom.Polygon;
 public class CRSUtilities {
 
 	/**
-	 * Gets a matching UTM CoordinateReferenceSystem for the input SimpleFeature.
-	 * If the feature spans more than one UTM zone, the formula (zoneMin + zoneMax) / 2 is used.
-	 * Behaviour for cross-equator-features is not tested yet. 
-	 * @param feature
+	 * Finds the best-fitting UTM zone for the input SimpleFeature and returns the CoordinateReferenceSystem
+	 * that describes said UTM zone.
+	 * If the SimpleFeature does not already come in EPSG:4326 CRS (standard geographic projection using lon/lat values),
+	 * this method first reprojects the SimpleFeature into this particular CRS in order to obtain a
+	 * bounding box that uses lon/lat values which are in turn required for the method to properly derive an 
+	 * adequate UTM zone (finding a matching UTM zone depends mainly on Longitude values). 
+	 * 
+	 *
+	 * If a feature spans more than one UTM zone,
+	 * the average of all zones is used as the target UTM zone.
+	 * If the average is not an integer number, it is rounded down
+	 * to the next integer value (by convention, it might as well be rounded up).
+	 * 
+	 * 
+	 * Behaviour for cross-equator-features is probably not tested sufficiently. 
+	 * @param feature the feature to find a fitting UTM zone for.
+	 * @param featureCRS required additional information as the feature itself does not contain the CRS it uses.
 	 * @return
 	 */
 	public static CoordinateReferenceSystem getTargetUTM_CRS(SimpleFeature feature, CoordinateReferenceSystem featureCRS) throws Exception{
-		// find matching UTM zone for feature (UTM zones depend mainly on Longitude values)
-		
-
-		
-		// boundingBox must have latLong values in order to derive an UTM zone
-		// that makes sense
-		// --> convert BBOX to WGS84 CRS if needed
-		
-		// how to find Default Geographic CRS in Geotools? --> see tutorial
-		// CRS.decode("EPSG:4326");
-		// DefaultGeographicCRS.WGS84;`
-		
-		// check if CRS from Plot and Raster are different and reproject if needed
-		System.setProperty("org.geotools.referencing.forceXY", "true"); // sonst werden evtl X und Y vertauscht
+		System.setProperty("org.geotools.referencing.forceXY", "true"); // forces x/y order, otherwise axis order might be messed up by the JTS.transform() method
 		CoordinateReferenceSystem standardGeographicCRS = CRS.decode("EPSG:4326");
+		// check if feature CRS is different from EPSG:4326
 		boolean needsReproject = !CRS.equalsIgnoreMetadata(standardGeographicCRS, featureCRS);
 		
+		// values we need to find a matching UTM zone for the input feature
 		double lonMin;
 		double lonMax;
 		double latMin;
 		double latMax;
 		
-		if(needsReproject){
+		if(needsReproject){ // if feature CRS is different from EPSG:4326
 			MathTransform transform = CRS.findMathTransform(featureCRS, standardGeographicCRS, true);
-			Geometry geom1 = (Geometry)feature.getAttribute( "the_geom" );
-			Geometry geom2 = JTS.transform(geom1, transform);
-			// feature.setDefaultGeometry(geom2); // schlecht --> permanent change, auch bei copied feature
-			// wie komme ich an minX etc. über Geometry?
+			Geometry geom = (Geometry)feature.getAttribute( "the_geom" );
+			geom = JTS.transform(geom, transform); // transform feature Geometry to EPSG:4326
 			Envelope envelope = null;
-			if(geom2 instanceof Polygon){
-				geom2 = (Polygon) geom2;
-				envelope = geom2.getEnvelopeInternal();
-			}else if(geom2 instanceof MultiPolygon){
-				geom2 = (MultiPolygon) geom2;
-				envelope = geom2.getEnvelopeInternal();
+			// feature Geometry might either be a Polygon or a MultiPolygon object depending on input data
+			if(geom instanceof Polygon){
+				geom = (Polygon) geom;
+				envelope = geom.getEnvelopeInternal(); // getEnvelopeInternal() returns the bounding box of the Geometry
+			}else if(geom instanceof MultiPolygon){
+				geom = (MultiPolygon) geom;
+				envelope = geom.getEnvelopeInternal();
 			}else{
 				throw new Exception("Feature Geometry is neither a Polygon nor a MultiPolygon object");
 			}
@@ -84,37 +85,33 @@ public class CRSUtilities {
 			latMin = boundingBox.getMinY();
 			latMax = boundingBox.getMaxY();
 		}
-		
-		
-		
 
 		int zoneMin = long2UTM(lonMin);
 		int zoneMax = long2UTM(lonMax);
-		int utmZone = (int)Math.floor((zoneMin + zoneMax) / 2); // for when the feature spans more than one UTM zone
 		/*
-		 *  von Katja übernommen, ist Konventionssache: 
-		 *  wenn ein stratum sich über mehrere UTM-Zonen erstreckt, 
-		 *  wird die mittlere UTM-Zone für das gesamt Stratum ausgewählt (bei ungerader Anzahl von UTM-Zonen) 
-		 *  bzw. abgerundet bei gerade Anzahl von UTM-Zonen (man könnte zb auch aufrunden)
-		 *  --> gibts auch metrische CRS für größere Ausdehnungen (UTM-Zonen sind immer nur 6 Grad breit)??
+		 * If a feature spans more than one UTM zone,
+		 * the average of all zones is used as the target UTM zone.
+		 * If the average is not an integer number, it is rounded down
+		 * to the next integer value (by convention, it might as well be rounded up).
 		 */
+		int utmZone = (int)Math.floor((zoneMin + zoneMax) / 2); 
 
-
-		// derive EPSG code for UTM Zone:
-		//  UTM                    EPSG
-		//  01 N                   32601
-		//  02 N                   32602
-		//  60 N                   32660
-		// EPSG codes for UTM zones 1-60 N : 32601 - 32660 (all for WGS84 Datum, there are others, too)
-		// EPSG codes for UTM zones 1-60 S : 32701 - 32760 (all for WGS84 Datum, there are others, too)
-		// --> Formel: if(northernHemisphere) EPSG = 32600 + utmZone
-		// if(southernHemisphere) EPSG = 32700 + utmZone
-		// bei Hemisphärenüberschreitenden features: Lat-Mittelwert ((latMin + latMax) / 2) versuchen,
-		// könnte unerwartetes Verhalten verursachen bei evtl. negativen Hochwerten 
-		// (wenn latMean auf Nordhalbkugel liegt und sich ein feature auch auf die Südhalbkugel erstreckt)
-		// --> Testen
-		// (dann evtl mit UTM-Südzonen probieren, die haben false northing, da gibts keine negativen Werte)
-
+		/*
+		 * derive EPSG code for UTM Zone:
+		 * UTM                    EPSG
+		 * 01 N                   32601
+		 * 02 N                   32602
+		 * 60 N                   32660
+		 * EPSG codes for UTM zones 1-60 N : 32601 - 32660 (all for WGS84 Datum, there are others, too)
+		 * EPSG codes for UTM zones 1-60 S : 32701 - 32760 (all for WGS84 Datum, there are others, too)
+		 * --> Formula: if(northernHemisphere) EPSG = 32600 + utmZone
+		 * if(southernHemisphere) EPSG = 32700 + utmZone
+		 * bei Hemisphärenüberschreitenden features: Lat-Mittelwert ((latMin + latMax) / 2) versuchen,
+		 * könnte unerwartetes Verhalten verursachen bei evtl. negativen Hochwerten 
+		 * (wenn latMean auf Nordhalbkugel liegt und sich ein feature auch auf die Südhalbkugel erstreckt)
+		 * --> Testen
+		 * (dann evtl mit UTM-Südzonen probieren, die haben false northing, da gibts keine negativen Werte)
+		 */
 		
 		double latMean = (latMin + latMax)/2;
 
