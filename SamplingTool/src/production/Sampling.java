@@ -249,7 +249,8 @@ public class Sampling {
 					double plotValue = RasterProcessing.getValueAtPosition(coverage, plot, (double[]) null)[0];
 					// throw exception if plot has nodata value
 					if(plotValue == noDataValue){
-						throw new Exception("Plot does not have a corresponding raster pixel value ");
+						throw new Exception("Plot does not have a corresponding raster pixel value.\n"
+								+ " Make sure the weight raster completely covers the stratum area.");
 					}
 					// get plot weight 
 					double plotWeight = plotValue / maxValue;

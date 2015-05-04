@@ -6,6 +6,7 @@ import java.awt.EventQueue;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -25,6 +26,7 @@ import javax.swing.JList;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.JRadioButton;
+
 import java.awt.Font;
 
 
@@ -49,7 +51,7 @@ public class GUI_Designer extends JFrame {
 	private JPanel contentPane;
 	private JFileChooser openShapeFileDialog;
 	private JFileChooser openRasterFileDialog;
-	private JButton btnBrowse;
+	private JButton btnSelectSHP;
 	private JButton btnRunSampling; 
 	private JButton btnClose;
 	private JButton btnSelectGeotiffRaster;
@@ -161,7 +163,7 @@ public class GUI_Designer extends JFrame {
 		// Application Window Settings
 		setTitle("Arbonaut Spatial Sampling Tool");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 684, 902);
+		setBounds(100, 100, 684, 836);
 		//TODO make GUI window scrollable 
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -175,19 +177,27 @@ public class GUI_Designer extends JFrame {
 				System.exit(0); // TODO evtl. checken, ob das die Option der Wahl ist
 			}
 		});
-		btnClose.setBounds(496, 800, 122, 23);
+		btnClose.setBounds(496, 770, 122, 23);
 		contentPane.add(btnClose);
 		
 		
 		
-		// "Browse" button
-		btnBrowse = new JButton("Select Shapefile");
-		btnBrowse.addActionListener(new ActionListener() {
+		// "Select Shapefile" button
+		btnSelectSHP = new JButton("Select Shapefile");
+		// inititalize FileDialog and set currentDirectory outside Button큦 actionPerformed() so that
+		// the dialog큦 currentDirectory can be overwritten and rememered by the Button method
+		openShapeFileDialog = new JFileChooser();
+		openShapeFileDialog.setCurrentDirectory(new File("C:\\"));
+		// set a FileFilter to only display Shapefiles to the user
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("Shapefile", "shp");
+		openShapeFileDialog.setFileFilter(filter);
+		btnSelectSHP.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				openShapeFileDialog = new JFileChooser();
-				// TODO change File Dialog start directory to c: oder d:
-				openShapeFileDialog.setCurrentDirectory(new File("D:\\_HCU\\_Masterarbeit\\_TestData"));
+				
 				if(openShapeFileDialog.showOpenDialog(null) == JFileChooser.APPROVE_OPTION){
+					// remember last directory for next use
+					openShapeFileDialog.setCurrentDirectory(openShapeFileDialog.getCurrentDirectory());
+
 					inputShapeFile = openShapeFileDialog.getSelectedFile();
 					// write input file path to Label (just for visualization purposes)
 					lblSelectedFile.setText(inputShapeFile.toString());
@@ -208,8 +218,8 @@ public class GUI_Designer extends JFrame {
 				}
 			}
 		});
-		btnBrowse.setBounds(10, 20, 152, 23);
-		contentPane.add(btnBrowse);
+		btnSelectSHP.setBounds(10, 10, 152, 23);
+		contentPane.add(btnSelectSHP);
 		
 		
 		
@@ -295,7 +305,7 @@ public class GUI_Designer extends JFrame {
 		// Combo Box "Starting Point"
 		comboBox_StartingPoint = new JComboBox();
 		comboBox_StartingPoint.setEnabled(false);
-		comboBox_StartingPoint.setBounds(10, 642, 183, 30);
+		comboBox_StartingPoint.setBounds(10, 590, 183, 30);
 		comboBox_StartingPoint.addItem(null);
 		comboBox_StartingPoint.addItem("Random");
 		comboBox_StartingPoint.addItem("Specified");
@@ -574,7 +584,7 @@ public class GUI_Designer extends JFrame {
 			}
 		}
 				);
-		btnRunSampling.setBounds(4, 800, 122, 23);
+		btnRunSampling.setBounds(4, 770, 122, 23);
 		contentPane.add(btnRunSampling);
 
 
@@ -649,21 +659,21 @@ public class GUI_Designer extends JFrame {
 				// TextField "Grid Distance between points in X direction"
 				textField_DistX = new JTextField();
 				textField_DistX.setEnabled(false);
-				textField_DistX.setBounds(10, 536, 86, 20);
+				textField_DistX.setBounds(10, 472, 86, 20);
 				contentPane.add(textField_DistX);
 				textField_DistX.setColumns(10);
 
 				// TextField "Grid Distance between points in Y direction"
 				textField_DistY = new JTextField();
 				textField_DistY.setEnabled(false);
-				textField_DistY.setBounds(10, 590, 86, 20);
+				textField_DistY.setBounds(10, 536, 86, 20);
 				contentPane.add(textField_DistY);
 				textField_DistY.setColumns(10);
 						
 				// TextField "Start X"
 				textField_Start_X = new JTextField();
 				textField_Start_X.setEnabled(false);
-				textField_Start_X.setBounds(10, 703, 86, 20);
+				textField_Start_X.setBounds(10, 663, 86, 20);
 				contentPane.add(textField_Start_X);
 				textField_Start_X.setColumns(10);
 
@@ -671,7 +681,7 @@ public class GUI_Designer extends JFrame {
 				textField_Start_Y = new JTextField();
 				textField_Start_Y.setEnabled(false);
 				textField_Start_Y.setColumns(10);
-				textField_Start_Y.setBounds(10, 759, 86, 20);
+				textField_Start_Y.setBounds(10, 730, 86, 20);
 				contentPane.add(textField_Start_Y);
 				
 				// TextField "NumSubPlotsPerCluster"
@@ -699,7 +709,7 @@ public class GUI_Designer extends JFrame {
 				textField_H_numPlotsHorizontal = new JTextField();
 				textField_H_numPlotsHorizontal.setEnabled(false);
 				textField_H_numPlotsHorizontal.setColumns(10);
-				textField_H_numPlotsHorizontal.setBounds(221, 731, 86, 20);
+				textField_H_numPlotsHorizontal.setBounds(221, 730, 86, 20);
 				contentPane.add(textField_H_numPlotsHorizontal);
 				
 				// TextField "BuffferSize"
@@ -715,12 +725,12 @@ public class GUI_Designer extends JFrame {
 				//-----------------------------------------------------------------------------------------
 				// Labels
 				lblSelectedFile = new JLabel("No File selected yet");
-				lblSelectedFile.setBounds(92, 40, 448, 30);
+				lblSelectedFile.setBounds(95, 27, 900, 30);
 				contentPane.add(lblSelectedFile);
 				
 				lblSubplotsVerticalLine = new JLabel("Sub-plots per vertical line (only H Clusters):");
 				lblSubplotsVerticalLine.setEnabled(false);
-				lblSubplotsVerticalLine.setBounds(221, 602, 300, 50);
+				lblSubplotsVerticalLine.setBounds(221, 607, 300, 50);
 				contentPane.add(lblSubplotsVerticalLine);
 				
 				lblClusterDesign = new JLabel("Cluster Design:");
@@ -738,13 +748,13 @@ public class GUI_Designer extends JFrame {
 				lblSubplotsPerCluster.setBounds(221, 493, 200, 50);
 				contentPane.add(lblSubplotsPerCluster);
 				
-				lblStart_Y = new JLabel("Starting coordinate y:");
+				lblStart_Y = new JLabel("<html><body>Starting coordinate Y<br>(based on input CRS):</body></html>\r\n");
 				lblStart_Y.setEnabled(false);
-				lblStart_Y.setBounds(10, 716, 200, 50);
+				lblStart_Y.setBounds(10, 686, 200, 50);
 				contentPane.add(lblStart_Y);
 
-				lblNewLabel = new JLabel("Selected File:");
-				lblNewLabel.setBounds(10, 40, 82, 30);
+				lblNewLabel = new JLabel("Selected SHP:");
+				lblNewLabel.setBounds(10, 27, 82, 30);
 				contentPane.add(lblNewLabel);
 				
 				lbl_SelectColumn = new JLabel("Choose one of the Shapefile Column Names for Strata Selection:");
@@ -759,28 +769,28 @@ public class GUI_Designer extends JFrame {
 				lblSamplingDesign.setBounds(10, 373, 200, 30);
 				contentPane.add(lblSamplingDesign);
 				
-				lblDist_x = new JLabel("Distance between points x:");
+				lblDist_x = new JLabel("Distance between points X [m]:");
 				lblDist_x.setEnabled(false);
-				lblDist_x.setBounds(10, 493, 200, 50);
+				lblDist_x.setBounds(10, 431, 200, 50);
 				contentPane.add(lblDist_x);
 				
 				lblStartingPoint = new JLabel("Starting point:");
 				lblStartingPoint.setEnabled(false);
-				lblStartingPoint.setBounds(10, 602, 200, 50);
+				lblStartingPoint.setBounds(10, 554, 200, 50);
 				contentPane.add(lblStartingPoint);
 				
 				lblNewLabel_3 = new JLabel("Cluster Sampling:");
 				lblNewLabel_3.setBounds(221, 373, 200, 30);
 				contentPane.add(lblNewLabel_3);
 				
-				lblStart_X = new JLabel("Starting coordinate x:");
+				lblStart_X = new JLabel("<html><body>Starting coordinate X<br>(based on input CRS):</body></html>\r\n");
 				lblStart_X.setEnabled(false);
-				lblStart_X.setBounds(10, 663, 200, 50);
+				lblStart_X.setBounds(10, 620, 183, 50);
 				contentPane.add(lblStart_X);
 				
-				lblDist_y = new JLabel("Distance between points y:");
+				lblDist_y = new JLabel("Distance between points Y [m]:");
 				lblDist_y.setEnabled(false);
-				lblDist_y.setBounds(10, 550, 200, 50);
+				lblDist_y.setBounds(10, 493, 200, 50);
 				contentPane.add(lblDist_y);
 				
 				lblSubplotsHorizontalLine = new JLabel("<html><body>Sub-plots per horizontal line (only H Clusters):<br> Note: Plots located both on horizontal AND vertical lines are considered to belong only to vertical lines</body></html>");
@@ -788,7 +798,7 @@ public class GUI_Designer extends JFrame {
 				lblSubplotsHorizontalLine.setBounds(221, 680, 300, 50);
 				contentPane.add(lblSubplotsHorizontalLine);
 				
-				lblBufferSize = new JLabel("<html><body>Plot Radius<br>(minimum Distance <br>to Stratum boundary):</body></html>");
+				lblBufferSize = new JLabel("<html><body>Plot Radius<br>(minimum Distance <br>to Stratum boundary)[m]:</body></html>");
 				lblBufferSize.setBounds(449, 376, 229, 53);
 				contentPane.add(lblBufferSize);
 				
@@ -796,28 +806,34 @@ public class GUI_Designer extends JFrame {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // neu weighted Sampling
 				lblRasterFile = new JLabel("");
-				lblRasterFile.setFont(new Font("Tahoma", Font.PLAIN, 10));
 				lblRasterFile.setEnabled(false);
-				lblRasterFile.setBounds(300, 65, 360, 14);
+				lblRasterFile.setBounds(378, 123, 900, 41);
 				contentPane.add(lblRasterFile);
 				
 				btnSelectGeotiffRaster = new JButton("Select GeoTIFF Raster File");
 				btnSelectGeotiffRaster.setEnabled(false);
+				
+				// inititalize FileDialog and set currentDirectory outside Button큦 actionPerformed() so that
+				// the dialog큦 currentDirectory can be overwritten and rememered by the Button method
+				openRasterFileDialog = new JFileChooser();
+				openRasterFileDialog.setCurrentDirectory(new File("C:\\"));
+				// set a FileFilter to only display raster files to the user
+				FileNameExtensionFilter rasterFilter = new FileNameExtensionFilter("GeoTIFF", "tif", "tiff");
+				openRasterFileDialog.setFileFilter(rasterFilter);
 				btnSelectGeotiffRaster.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						openRasterFileDialog = new JFileChooser();
-						// TODO change File Dialog start directory to c: oder d:
-						openRasterFileDialog.setCurrentDirectory(new File("D:\\_HCU\\_Masterarbeit\\_TestData"));
 						if(openRasterFileDialog.showOpenDialog(null) == JFileChooser.APPROVE_OPTION){
+							// remember last directory for next use
+							openRasterFileDialog.setCurrentDirectory(openRasterFileDialog.getCurrentDirectory());
 							inputRasterFile = openRasterFileDialog.getSelectedFile();
 							// write input file path to Label (just for visualization purposes)
-							lblRasterFile.setText(inputRasterFile.toString());
+							lblRasterFile.setText("Selected GeoTIFF: " + inputRasterFile.toString());
 							
 						}
 						
 					}
 				});
-				btnSelectGeotiffRaster.setBounds(378, 33, 183, 23);
+				btnSelectGeotiffRaster.setBounds(378, 103, 183, 23);
 				contentPane.add(btnSelectGeotiffRaster);
 				
 
@@ -837,7 +853,7 @@ public class GUI_Designer extends JFrame {
 						
 					}
 				});
-				rdbtnWeightedSampling.setBounds(389, 10, 128, 23);
+				rdbtnWeightedSampling.setBounds(389, 75, 150, 23);
 				contentPane.add(rdbtnWeightedSampling);
 ////////////////////////////////////////////////////////////////////////////////////////////////////				
 

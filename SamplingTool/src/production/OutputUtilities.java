@@ -27,12 +27,12 @@ public static File getFile() throws Exception{
 	// muss ich hier nach der Programmierlogik eine Exception werfen
 	// TODO automatically add ".csv" file extension
 	JFileChooser saveFileDialog = new JFileChooser(); // JFileChooser kommt aus javax.swing und hat nichts mit GeoTools zu tun 
-	saveFileDialog.setCurrentDirectory(new File("D:\\"));
+	saveFileDialog.setCurrentDirectory(new File("C:\\"));
 	//    FileNameExtensionFilter filter = new FileNameExtensionFilter(
 	//        "CSV files", "csv");
 	//    chooser.setFileFilter(filter);
-	saveFileDialog.setDialogType(JFileChooser.SAVE_DIALOG);
-	if(saveFileDialog.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) { // return from method if users cancels the dialog (ie, user does not click on "Save"-Button)
+	//saveFileDialog.setDialogType(JFileChooser.SAVE_DIALOG);
+	if(saveFileDialog.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) { // return from method if users cancels the dialog (ie, user does not click on "Save"-Button)
 		throw new Exception("SaveFileDialog cancelled without specifying an output file");
 	}
 	// create output file 
