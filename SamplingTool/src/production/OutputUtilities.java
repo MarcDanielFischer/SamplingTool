@@ -59,7 +59,7 @@ public static File getFile() throws Exception{
 	 * @param weightedSampling specifies whether weight values are to be added to each plot
 	 * @throws Exception
 	 */
-	public static void writeCSVoutput(File file, ArrayList<Plot> samplePlots, int clusterSampling, boolean weightedSampling) throws Exception{
+	public static void writeCSVoutput(File file, ArrayList<Plot> samplePlots, boolean clusterSampling, boolean weightedSampling) throws Exception{
 		// TODO vl doch BufferedWriter nehmen --> ist der irgendwie sicherer?
 
 		FileWriter fileWriter = new FileWriter(file, false); // second param is for appending to file (Yes/No) --> 
@@ -68,19 +68,19 @@ public static File getFile() throws Exception{
 		// adapt file header for 4 different cluster sampling and weighted sampling option combinations:
 		
 		// false false
-		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO && weightedSampling == false){ 
+		if(clusterSampling == false && weightedSampling == false){ 
 			fileWriter.write("\"Plot_nr\",\"X\",\"Y\",\"Stratum\"\n");
 		}
 		// true false
-		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES && weightedSampling == false){ 
+		if(clusterSampling == true && weightedSampling == false){ 
 			fileWriter.write("\"Cluster_nr\",\"Plot_nr\",\"X\",\"Y\",\"Stratum\"\n");
 		}
 		// false true
-		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_NO && weightedSampling == true){ 
+		if(clusterSampling == false && weightedSampling == true){ 
 			fileWriter.write("\"Plot_nr\",\"X\",\"Y\",\"Plot_weight\",\"Stratum\"\n");
 		}
 		// true true 
-		if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES && weightedSampling == true){ 
+		if(clusterSampling == true && weightedSampling == true){ 
 			fileWriter.write("\"Cluster_nr\",\"Plot_nr\",\"X\",\"Y\",\"Plot_weight\",\"Stratum\"\n");
 		}
 		
@@ -89,7 +89,7 @@ public static File getFile() throws Exception{
 		
 		for(Plot plot : samplePlots){
 			// write clusterNr only to output if Cluster Sampling is the chosen sampling option
-			if(clusterSampling == GUI_Designer.CLUSTER_SAMPLING_YES){
+			if(clusterSampling == true){
 				fileWriter.write(Integer.toString(plot.getClusterNr())+ ",");
 			}
 			fileWriter.write(Integer.toString(plot.getPlotNr()) + ",");

@@ -16,14 +16,43 @@ import com.vividsolutions.jts.geom.Point;
  */
 public class Clusters {
 
+	
 	/**
 	 * Grow i-shaped clusters from given seed points with a specified number of sub-plots per cluster 
 	 * and a specified distance separating thesub-plots (distance in Meters).
 	 * The clusters are linearly grown from south to north (the cluster seed point is the southernmost plot). 
-	 * @param clusterSeedPoints points to be used as origin of each cluster
+	 * 
+	 * This method calls create_I_clusters() for all input strata.
+	 * 
+	 * @param clusterSeedPoints points to be used as origin of each cluster (for all strata). Must be in UTM projection.
 	 * @param distBetweenSubPlots distance in Meters
 	 * @param numClusterSubPlots number of sub-plots per cluster
-	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
+	 * @param strata this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
+	 * @return
+	 */
+	public static ArrayList<Plot> create_I_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum[] strata){
+		ArrayList<Plot> plots = new ArrayList<Plot>();
+		for (Stratum stratum : strata) {
+			// filter clusterSeedPoints so that only those for each stratum remain
+			ArrayList<Plot> filteredClusterSeedPoints = new ArrayList<Plot>();
+			for(Plot plot : clusterSeedPoints){
+				if(plot.getStratumName().equals(stratum.getName())){
+					filteredClusterSeedPoints.add(plot);
+				}
+			}
+			plots.addAll(Clusters.create_I_clusters(filteredClusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, stratum));
+		}
+		return plots;
+	}
+	
+	/**
+	 * Grow i-shaped clusters from given seed points with a specified number of sub-plots per cluster 
+	 * and a specified distance separating thesub-plots (distance in Meters).
+	 * The clusters are linearly grown from south to north (the cluster seed point is the southernmost plot). 
+	 * @param clusterSeedPoints points to be used as origin of each cluster. Must be in UTM projection.
+	 * @param distBetweenSubPlots distance in Meters
+	 * @param numClusterSubPlots number of sub-plots per cluster
+	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
 	 */
 	public static ArrayList<Plot> create_I_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
 		
@@ -74,17 +103,51 @@ public class Clusters {
 		return outputPlots;
 	}
 	
+	
+
+
+	/**
+	 * Grow L-shaped clusters from given seed points with a 
+	 * specified number of sub-plots per cluster 
+	 * and a specified distance separating the sub-plots (distance in Meters).
+	 * In case of an even total number of sub-plots shaping the cluster, the vertical axis 
+	 * will be one sub-plots longer than the horizontal axis (just like the real character "L"). 
+	 * 
+	 * This method calls create_L_clusters() for all input strata.
+	 * 
+	 * @param clusterSeedPoints points to be used as origin of each cluster (for all strata). Must be in UTM projection.
+	 * @param distBetweenSubPlots distance in Meters
+	 * @param numClusterSubPlots number of sub-plots per cluster
+	 * @param orientation 1: regular "L" shape -1: upside down
+	 * @param strata this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
+	 * @return
+	 */
+	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, int orientation,  Stratum[] strata ){
+		ArrayList<Plot> plots = new ArrayList<Plot>();
+		for (Stratum stratum : strata) {
+			// filter clusterSeedPoints so that only those for each stratum remain
+			ArrayList<Plot> filteredClusterSeedPoints = new ArrayList<Plot>();
+			for(Plot plot : clusterSeedPoints){
+				if(plot.getStratumName().equals(stratum.getName())){
+					filteredClusterSeedPoints.add(plot);
+				}
+			}
+			plots.addAll(Clusters.create_L_clusters(filteredClusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, orientation, stratum));
+		}
+		return plots;
+	}
+	
 	/**
 	 * Grow L-shaped clusters from given seed points with a 
 	 * specified number of sub-plots per cluster 
 	 * and a specified distance separating the sub-plots (distance in Meters).
 	 * In case of an even total number of sub-plots shaping the cluster, the vertical axis 
 	 * will be one sub-plots longer than the horizontal axis (just like the real character "L").
-	 * @param clusterSeedPoints
+	 * @param clusterSeedPoints. Must be in UTM projection.
 	 * @param distBetweenSubPlots
 	 * @param numClusterSubPlots
 	 * @param orientation 1: regular "L" shape -1: upside down
-	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
+	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
 	 */
 	public static ArrayList<Plot> create_L_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, int orientation,  Stratum stratum ){
 		
@@ -190,19 +253,55 @@ public class Clusters {
 		return outputPlots;
 	}
 	
+	
+	
+	/**
+	 * Grow H-shaped clusters from given seed points using
+	 * the specified distance separating the sub-plots (distance in Meters).
+	 * The horizontal line is created first, and from its end points
+	 * the vertical lines are built. 
+	 * 
+	 * Note: plots which are located  on both horizontal AND vertical lines 
+	 * are considered to belong only to vertical lines (so in case of odd number of plots in vertical  lines 
+	 * the horizontal line endpoints do not belong to horizontal line but to vertical lines instead)
+	 * 
+	 * This method calls create_H_clusters() for all input strata.
+	 * 
+	 * @param clusterSeedPoints points to be used as origin of each cluster (for all strata). Must be in UTM projection.
+	 * @param distBetweenSubPlots distance between sub-plots in Meters.
+	 * @param numSubPlotsInVerticalLine number of sub-plots per vertical line.
+	 * @param numSubPlotsinHhorizontalLine: number of sub-plots per horizontal line.
+	 * @param strata this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
+	 * @return
+	 */
+	public static ArrayList<Plot> create_H_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numSubPlotsInVerticalLine, int numSubPlotsInHorizontalLine, Stratum[] strata ){
+		ArrayList<Plot> plots = new ArrayList<Plot>();
+		for (Stratum stratum : strata) {
+			// filter clusterSeedPoints so that only those for each stratum remain
+			ArrayList<Plot> filteredClusterSeedPoints = new ArrayList<Plot>();
+			for(Plot plot : clusterSeedPoints){
+				if(plot.getStratumName().equals(stratum.getName())){
+					filteredClusterSeedPoints.add(plot);
+				}
+			}
+			plots.addAll(Clusters.create_H_clusters(filteredClusterSeedPoints, distBetweenSubPlots, numSubPlotsInVerticalLine, numSubPlotsInHorizontalLine, stratum));
+		}
+		return plots;
+	}
+	
 	/**
 	 * Grow H-shaped clusters from given seed points. 
 	 * The horizontal line is created first, and from its end points
 	 * the vertical lines are built. 
 	 *
-	 * @param clusterSeedPoints seed points from which the clusters are generated.
+	 * @param clusterSeedPoints seed points from which the clusters are generated. Must be in UTM projection.
 	 * @param distBetweenSubPlots distance between sub-plots in Meters.
 	 * @param numSubPlotsInVerticalLine number of sub-plots per vertical line.
 	 * @param numSubPlotsinHhorizontalLine: number of sub-plots per horizontal line.
 	 * Note: plots which are located  on both horizontal AND vertical lines 
 	 * are considered to belong only to vertical lines (so in case of odd number of plots in vertical  lines 
 	 * the horizontal line endpoints do not belong to horizontal line but to vertical lines instead)
-	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum 
+	 * @param stratum this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
 	 * @return output plots
 	 */
 	public static ArrayList<Plot> create_H_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numSubPlotsInVerticalLine, int numSubPlotsInHorizontalLine, Stratum stratum ){
@@ -720,14 +819,44 @@ public class Clusters {
 		return outputPlots;
 	}
 	
+	
+	
+	/**
+	 * Grow square-shaped clusters from given seed points with a specified number of sub-plots per cluster 
+	 * and a specified distance separating thesub-plots (distance in Meters).
+	 * 
+	 * This method calls create_Square_clusters() for all input strata.
+	 * 
+	 * @param clusterSeedPoints points to be used as origin of each cluster (for all strata). Must be in UTM projection.
+	 * @param distBetweenSubPlots distance in Meters
+	 * @param numClusterSubPlots the total number of sub-plots per cluster. Note: any input number 
+	 * will result in output clusters that consist of a number of sub-plots that is divisible by 4.
+	 * @param strata this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
+	 * @return
+	 */
+	public static ArrayList<Plot> create_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum[] strata){
+		ArrayList<Plot> plots = new ArrayList<Plot>();
+		for (Stratum stratum : strata) {
+			// filter clusterSeedPoints so that only those for each stratum remain
+			ArrayList<Plot> filteredClusterSeedPoints = new ArrayList<Plot>();
+			for(Plot plot : clusterSeedPoints){
+				if(plot.getStratumName().equals(stratum.getName())){
+					filteredClusterSeedPoints.add(plot);
+				}
+			}
+			plots.addAll(Clusters.create_Square_clusters(filteredClusterSeedPoints, distBetweenSubPlots, numClusterSubPlots, stratum));
+		}
+		return plots;
+	}
+	
 	/**
 	 * Grow square-shaped clusters from given seed points. 
-	 * @param clusterSeedPoints seed points from which the clusters are generated.
+	 * @param clusterSeedPoints seed points from which the clusters are generated. Must be in UTM projection.
 	 * @param distBetweenSubPlots distance between sub-plots in Meters.
 	 * @param numClusterSubPlots the total number of sub-plots per cluster. Note: any input number 
 	 * will result in output clusters that consist of a number of sub-plots that is divisible by 4.
 	 * @param stratum this param is needed in order to check whether all generated cluster 
-	 * plots are inside the stratum 
+	 * plots are inside the stratum. Must be in UTM projection.
 	 * @return output plots
 	 */
 	public static ArrayList<Plot> create_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, int numClusterSubPlots, Stratum stratum){
@@ -875,12 +1004,41 @@ public class Clusters {
 		return outputPlots;
 	}
 	
+	
+	
+	/**
+	 * Grow rotated square clusters from given seed points using 
+	 * a specified distance separating the sub-plots (distance in Meters).
+	 * As for now, this method only creates clusters containing 4 sub-Plots.
+	 * 
+	 * This method calls create_rotated_Square_clusters() for all input strata.
+	 * 
+	 * @param clusterSeedPoints points to be used as origin of each cluster (for all strata). Must be in UTM projection.
+	 * @param distBetweenSubPlots distance in Meters
+	 * @param strata this param is needed in order to check whether all generated cluster plots are inside the stratum. Must be in UTM projection. 
+	 * @return
+	 */
+	public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, Stratum[] strata){
+		ArrayList<Plot> plots = new ArrayList<Plot>();
+		for (Stratum stratum : strata) {
+			// filter clusterSeedPoints so that only those for each stratum remain
+			ArrayList<Plot> filteredClusterSeedPoints = new ArrayList<Plot>();
+			for(Plot plot : clusterSeedPoints){
+				if(plot.getStratumName().equals(stratum.getName())){
+					filteredClusterSeedPoints.add(plot);
+				}
+			}
+			plots.addAll(Clusters.create_rotated_Square_clusters(filteredClusterSeedPoints, distBetweenSubPlots, stratum));
+		}
+		return plots;
+	}
+	
 	/**
 	 * Grow rotated square clusters from given seed points. As for now, this method only creates clusters containing 4 sub-Plots.
-	 * @param clusterSeedPoints seed points from which the clusters are generated.
+	 * @param clusterSeedPoints seed points from which the clusters are generated. Must be in UTM projection.
 	 * @param distBetweenSubPlots distance between sub-plots in Meters.
 	 * @param stratum this param is needed in order to check whether all generated cluster 
-	 * plots are inside the stratum 
+	 * plots are inside the stratum. Must be in UTM projection.
 	 * @return  output plots
 	 */
 	public static ArrayList<Plot> create_rotated_Square_clusters(ArrayList<Plot> clusterSeedPoints, int distBetweenSubPlots, Stratum stratum){

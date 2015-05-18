@@ -104,26 +104,22 @@ public class GUI_Designer extends JFrame {
 	int numStrata;
 	String[] selectedStrata;
 	int samplingDesign;
-	static final int SIMPLE_RANDOM_SAMPLING = 1; // constants to specify samplingDesign
+	public static final int SIMPLE_RANDOM_SAMPLING = 1; // constants to specify samplingDesign
 	int[] numPlotsToBeSampled = null; // only for option SIMPLE_RANDOM_SAMPLING 
-	static final int SYSTEMATIC_SAMPLING = 2;
+	public static final int SYSTEMATIC_SAMPLING = 2;
 	int gridDistX = 0; // only for option SYSTEMATIC_SAMPLING 
 	int gridDistY = 0;// only for option SYSTEMATIC_SAMPLING 
-	int startingPoint = 0; // only for option SYSTEMATIC_SAMPLING 
-	static final int STARTING_POINT_RANDOM = 1; // constants to specify startingPoint
-	static final int STARTING_POINT_SPECIFIED = 2;
+	boolean startPointSpecified = false; // only for option SYSTEMATIC_SAMPLING 
 	double startX = 0; // only for option STARTING_POINT_SPECIFIED 
 	double startY = 0; // only for option STARTING_POINT_SPECIFIED 
-	int clusterSampling;
-	static final int CLUSTER_SAMPLING_NO = 1; // constants to specify clusterSampling
-	static final int CLUSTER_SAMPLING_YES = 2;
+	boolean clusterSampling;
 	int clusterShape = 0; // only for clusterSampling == YES
-	static final int I_SHAPE = 1; // constants to specify clusterShape
-	static final int L_SHAPE = 2;
-	static final int L_SHAPE_UPSIDE_DOWN = 3;
-	static final int H_SHAPE = 4;
-	static final int SQUARE_SHAPE = 5;
-	static final int SQUARE_SHAPE_ROTATED = 6;
+	public static final int I_SHAPE = 1; // constants to specify clusterShape
+	public static final int L_SHAPE = 2;
+	public static final int L_SHAPE_UPSIDE_DOWN = 3;
+	public static final int H_SHAPE = 4;
+	public static final int SQUARE_SHAPE = 5;
+	public static final int SQUARE_SHAPE_ROTATED = 6;
 	int numSubPlotsinHVerticalLine = 0; // only for clusterShape == H_SHAPE
 	int numSubPlotsinHhorizontalLine = 0; // only for clusterShape == H_SHAPE
 	int numClusterSubPlots = 0; // only for clusterSampling == YES
@@ -471,7 +467,7 @@ public class GUI_Designer extends JFrame {
 
 					// Starting Point 
 					if((String)comboBox_StartingPoint.getSelectedItem() == "Specified"){
-						startingPoint = STARTING_POINT_SPECIFIED;
+						startPointSpecified = true;
 
 						// make sure the TextField input numbers are separated by a point instead of a comma (numbers using decimal commas cannot be parsed by Double.parseDouble())
 						String x = textField_Start_X.getText().replace(",", ".");
@@ -487,15 +483,13 @@ public class GUI_Designer extends JFrame {
 						}
 
 
-					} else{
-						startingPoint = STARTING_POINT_RANDOM; // use STARTING_POINT_RANDOM as default unless otherwise specified
-					}
+					} 
 				}
 
 
 				// Cluster Sampling params
 				if((String)comboBox_ClusterSampling.getSelectedItem()=="Yes"){
-					clusterSampling = CLUSTER_SAMPLING_YES;
+					clusterSampling = true;
 					// all following params are only needed if clusterSampling == YES,
 					// hence they are treated inside this if statement
 					// Cluster Shape
@@ -557,7 +551,7 @@ public class GUI_Designer extends JFrame {
 
 
 
-				}else clusterSampling = CLUSTER_SAMPLING_NO; // use CLUSTER_SAMPLING_NO as default option, unless CLUSTER_SAMPLING_YES is explicitly specified
+				}else clusterSampling = false; // use CLUSTER_SAMPLING_NO as default option, unless CLUSTER_SAMPLING_YES is explicitly specified
 
 				// size of the negative Buffer to be applied to strata polygons
 				try{
@@ -576,7 +570,20 @@ public class GUI_Designer extends JFrame {
 				// TODO Methode vl mit weniger Parameter hinbekommen --> evtl. Params als eigene Objektklasse
 				if(allParamsOK ){ 
 					try{
-						Sampling.runSampling(inputShapeFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startingPoint, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize, weightedSampling, inputRasterFile ); 
+						ArrayList<Plot> plots = Sampling.runSampling(inputShapeFile, sampleColumn, selectedStrata, samplingDesign, numPlotsToBeSampled, gridDistX, gridDistY, startPointSpecified, startX, startY, clusterSampling, clusterShape, numSubPlotsinHVerticalLine, numSubPlotsinHhorizontalLine, numClusterSubPlots, distBetweenSubPlots, bufferSize, weightedSampling, inputRasterFile ); 
+					
+						// writeOutput-Kram
+						if(plots.size()== 0){
+							throw new Exception("No output plots have been generated");
+						}else{
+							// reproject output plots to LatLon
+							CRSUtilities.UTM2LonLat(plots);
+					
+						// write output to file
+						File outputFile = OutputUtilities.getFile();
+						OutputUtilities.writeCSVoutput(outputFile, plots, clusterSampling, weightedSampling);
+						}
+					
 					}catch(Exception e){
 						JOptionPane.showMessageDialog(null, e.toString());
 					}	
@@ -738,7 +745,7 @@ public class GUI_Designer extends JFrame {
 				lblClusterDesign.setBounds(217, 416, 200, 50);
 				contentPane.add(lblClusterDesign);
 
-				lblDistanceBetweenSubplots = new JLabel("Distance between sub-plots");
+				lblDistanceBetweenSubplots = new JLabel("Distance between sub-plots [m]");
 				lblDistanceBetweenSubplots.setEnabled(false);
 				lblDistanceBetweenSubplots.setBounds(221, 554, 200, 50);
 				contentPane.add(lblDistanceBetweenSubplots);

@@ -172,6 +172,21 @@ public class RasterProcessing {
 	}
 	
 	
+	
+	/**
+	 * Clips a Geometry from an input GridCoverage2D.
+	 * @param clipGeometry must have the same CRS as coverage. This is provided when 
+	 * clipGeometries have been extracted using the getClipGeometries() method.
+	 * @param coverage
+	 * @return
+	 */
+	public static GridCoverage2D getClippedCoverage(Geometry clipGeometry, GridCoverage2D coverage){
+		ArrayList<Geometry> clipGeometries = new ArrayList<Geometry>();
+		clipGeometries.add(clipGeometry);
+		return getClippedCoverage(clipGeometries, coverage);
+	}
+	
+	
 	/**
 	 * Clips an input GridCoverage2D using ArrayList<Geometry> clipGeometries.
 	 * @param clipGeometries must have the same CRS as coverage. This is provided when 

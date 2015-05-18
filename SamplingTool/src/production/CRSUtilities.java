@@ -135,6 +135,90 @@ public class CRSUtilities {
 		return targetCRS;
 	}
 
+	
+	
+	
+	
+	/**
+	 * TODO MEthode von oben umschreiben für Stratum
+	 * Soll ich dann die beiden Varianten drinlassen? Man weiß ja nie...
+	 * @return
+	 */
+	public static CoordinateReferenceSystem getTargetUTM_CRS(Stratum stratum)throws Exception{
+
+		// reproject Geometry to EPSG:4326 if needed
+		System.setProperty("org.geotools.referencing.forceXY", "true"); // forces x/y order, otherwise axis order might be messed up by the JTS.transform() method
+		CoordinateReferenceSystem stratumCRS = stratum.getCRS();
+		CoordinateReferenceSystem standardGeographicCRS = CRS.decode("EPSG:4326");
+		// check if feature CRS is different from EPSG:4326
+		boolean needsReproject = !CRS.equalsIgnoreMetadata(standardGeographicCRS, stratumCRS);
+		Geometry geom = stratum.getGeometry();
+		if(needsReproject){ // if feature CRS is different from EPSG:4326
+			MathTransform transform = CRS.findMathTransform(stratumCRS, standardGeographicCRS, true);
+			geom = JTS.transform(geom, transform); // transform feature Geometry to EPSG:4326
+		}
+		
+		// get Bounding Box and extract Min/Max values
+		Envelope envelope = geom.getEnvelopeInternal(); // getEnvelopeInternal() returns the bounding box of the Geometry
+		double lonMin = envelope.getMinX();
+		double lonMax = envelope.getMaxX();
+		double latMin = envelope.getMinY();
+		double latMax = envelope.getMaxY();
+
+		// find matching UTM zone 
+		int zoneMin = long2UTM(lonMin);
+		int zoneMax = long2UTM(lonMax);
+		/*
+		 * If a feature spans more than one UTM zone,
+		 * the average of all zones is used as the target UTM zone.
+		 * If the average is not an integer number, it is rounded down
+		 * to the next integer value (by convention, it might as well be rounded up).
+		 */
+		int utmZone = (int)Math.floor((zoneMin + zoneMax) / 2); 
+
+		/*
+		 * derive EPSG code for UTM Zone:
+		 * UTM                    EPSG
+		 * 01 N                   32601
+		 * 02 N                   32602
+		 * 60 N                   32660
+		 * EPSG codes for UTM zones 1-60 N : 32601 - 32660 (all for WGS84 Datum, there are others, too)
+		 * EPSG codes for UTM zones 1-60 S : 32701 - 32760 (all for WGS84 Datum, there are others, too)
+		 * --> Formula: if(northernHemisphere) EPSG = 32600 + utmZone
+		 * if(southernHemisphere) EPSG = 32700 + utmZone
+		 * bei Hemisphärenüberschreitenden features: Lat-Mittelwert ((latMin + latMax) / 2) versuchen,
+		 * könnte unerwartetes Verhalten verursachen bei evtl. negativen Hochwerten 
+		 * (wenn latMean auf Nordhalbkugel liegt und sich ein feature auch auf die Südhalbkugel erstreckt)
+		 * --> Testen
+		 * (dann evtl mit UTM-Südzonen probieren, die haben false northing, da gibts keine negativen Werte)
+		 */
+		
+		double latMean = (latMin + latMax)/2;
+
+		/*
+		 * The EPSG Code ist determined depending on whether
+		 * the mean latitude value is on the northern or the southern hemisphere
+		 * (mean latitude value: just the mean between min and max latitude values of the feature 
+		 * bounding box; the fact which hemisphere the biggest area proportion 
+		 * of the feature is located on is not taken into account here)
+		 */
+		int epsgCode;
+		if(latMean > 0){ 
+			epsgCode = 32600 + utmZone; // northern hemisphere
+		}else{ 
+			epsgCode = 32700 + utmZone; // southern hemisphere
+		}
+
+		// create target CRS from EPSG code
+		String crs = "EPSG:" + epsgCode;
+		CoordinateReferenceSystem targetCRS = CRS.decode(crs);
+		return targetCRS;
+	}
+	
+	
+	
+	
+	
 	/**
 	 * Derive UTM Zone for a given longitude value.
 	 * @param longitude
@@ -173,4 +257,41 @@ public class CRSUtilities {
 		}
 
 	}
+	
+	
+	
+	/**
+	 * Reproject Strata CRS to UTM.
+	 * @param inputStrata
+	 * @return
+	 */
+	public static Stratum[] convert2UTM(Stratum[] inputStrata)throws Exception{
+		Stratum[] outputStrata = new Stratum[inputStrata.length];
+		for (int i = 0; i < inputStrata.length; i++) {
+			outputStrata[i] = convert2UTM(inputStrata[i]);
+		}
+		return outputStrata;
+	}
+
+	/**
+	 * Reproject Stratum CRS to UTM.
+	 * @param inputStratum
+	 * @return
+	 */
+	public static Stratum convert2UTM(Stratum inputStratum)throws Exception{
+		CoordinateReferenceSystem sourceCRS = inputStratum.getCRS();
+		CoordinateReferenceSystem targetUTM_CRS = CRSUtilities.getTargetUTM_CRS(inputStratum); // targetCRS:in UTM projection
+		// transform source CRS directly (without looking up the corresponding EPSG code first and use that CRS instead)
+		MathTransform transform = CRS.findMathTransform(sourceCRS, targetUTM_CRS, true); // last param is the "lenient" param which can be important when there is not much transform info (?)
+		// get feature Geometry
+		Geometry sourceGeometry = inputStratum.getGeometry();
+		// convert Geometry to target CRS
+		Geometry utmGeometry = JTS.transform( sourceGeometry, transform);
+
+		Stratum outputStratum = new Stratum(utmGeometry, targetUTM_CRS, inputStratum.getName());
+		return outputStratum;
+	}
+
+	
+
 }
