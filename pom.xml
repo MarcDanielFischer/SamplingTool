@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<groupId>com.arbonaut</groupId>
+	<artifactId>sampling</artifactId>
+	<version>0.1</version>
+	<packaging>pom</packaging>
+	<name>sampling</name>
+	<url>http://www.arbonaut.com</url>
+
+  <!-- Declare dependencies and their versions that we'll use throughout. -->
+  <!-- Child modules still have to define which dependencies they actually use. --> 
+  <dependencyManagement>
+  
+  	<dependencies>
+    
+      <dependency>
+        <groupId>org.opengis</groupId>
+        <artifactId>geoapi</artifactId>
+        <version>3.0.0</version>
+      </dependency>
+      
+      <dependency>
+      	<groupId>com.vividsolutions</groupId>
+      	<artifactId>jts</artifactId>
+      	<version>1.13</version>
+      </dependency>
+    
+  		<dependency>
+  			<groupId>junit</groupId>
+  			<artifactId>junit</artifactId>
+        <version>4.12</version>
+  			<scope>test</scope>
+  		</dependency>
+  
+  	</dependencies>
+
+  </dependencyManagement>
+
+
+	<build>
+		
+		<plugins>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<excludes>
+					</excludes>
+				</configuration>
+			</plugin>
+
+		</plugins>
+	</build>
+  
+  <modules>
+		<module>sampling-lib</module>
+	</modules>
+
+
+</project>
