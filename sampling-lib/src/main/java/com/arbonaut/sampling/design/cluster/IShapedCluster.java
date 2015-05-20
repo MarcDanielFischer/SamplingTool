@@ -9,12 +9,20 @@ import com.vividsolutions.jts.geom.impl.CoordinateArraySequence;
 
 /**
  * I-shaped plot cluster.
+ * I-shaped cluster is a series of plots with an offset applied to the y 
+ * coordinate. 
  */
 public class IShapedCluster implements PlotCluster {
     
     private double ydistance;
     private int numPlots;  
     
+    /**
+     * IShapedCluster constructor.
+     *
+     * @param ydistance  Distance between sub-plots along the y axis     
+     * @param numPlots   Number of plots in the cluster     
+     */              
     public IShapedCluster(double ydistance, int numPlots)
     {
         this.ydistance = ydistance;
