@@ -8,69 +8,85 @@ import com.vividsolutions.jts.geom.Geometry;
 /**
  * Represents a single sample plot. 
  *  
- * Sample plot stores location/geometry of the plot, coordinate reference system 
- * (crs) and a number of attributes such as the unique plot or cluster numbers, 
- * stratum information etc. 
+ * Sample plot stores geometry of the plot and a number of attributes such as 
+ * the unique plot or cluster numbers, stratum information etc. 
  *
  * The class is immutable and cannot be modified after created. 
  */
 public class SamplePlot {
 	
+    public static final int NO_CLUSTER = -1;
+    public static final double NO_WEIGHT = -1;
+    
 	// properties
-	private Geometry geometry;
-	private int clusterNr;
-	private int plotNr;
-	private String stratumName;
-	private CoordinateReferenceSystem CRS;     
-	private double weight = -1.0;
+    private Geometry geometry;
+    private CoordinateReferenceSystem CRS;
+    
+	private int plotNr = 0;
+	private String stratumName = null;
+	private int clusterNr = NO_CLUSTER;
+	private double weight = NO_WEIGHT;
 	
 
 	
-	// constructors (3 versions, 2 overloads in order to match variable input param number)
-	
-
-
 	/**
-	 * Constructs a Plot object without clusterNr or plotNr.
+	 * Constructs a SamplePlot object without clusterNr or plotNr.
 	 * @param point
 	 * @param stratumName
 	 * @param CRS
 	 */
-	public SamplePlot(Geometry geom, String stratumName, CoordinateReferenceSystem CRS) {
+	public SamplePlot(Geometry geom, CoordinateReferenceSystem crs, String stratumName) {
 		this.geometry = geom;
+        this.CRS = crs;
 		this.stratumName = stratumName;
-		this.CRS = CRS;
 	}
 	
 	/**
-	 * Constructs a Plot object with a plotNr, but without a clusterNr (for CLUSTERSAMPLING_NO option)
+	 * Constructs a SamplePlot object with a plotNr, but without a clusterNr (for CLUSTERSAMPLING_NO option)
 	 * @param point
 	 * @param stratumName
 	 * @param CRS
 	 * @param plotNr
 	 */
-	public SamplePlot(Geometry geom, String stratumName, CoordinateReferenceSystem CRS, int plotNr) {
-		this(geom, stratumName, CRS);
-		this.plotNr = plotNr;
+	public SamplePlot(Geometry geom, CoordinateReferenceSystem crs, String stratumName, int plotNr) {
+		this(geom, crs, stratumName);
+        this.plotNr = plotNr;
 	}
 	
 	/**
-	 * Constructs a Plot object with plotNr and clusterNr
+	 * Constructs a SamplePlot object with plotNr and clusterNr
 	 * @param point
 	 * @param stratumName
 	 * @param CRS
 	 * @param plotNr
 	 * @param clusterNr
 	 */
-	public SamplePlot(Geometry geom, String stratumName, CoordinateReferenceSystem CRS, int plotNr, int clusterNr) {
-		this(geom, stratumName, CRS, plotNr);
+	public SamplePlot(Geometry geom, CoordinateReferenceSystem crs, String stratumName, int plotNr, int clusterNr) {
+		this(geom, crs, stratumName, plotNr);
 		this.clusterNr = clusterNr;
 	}
+    
+    
+    /**
+	 * Constructs new SamplePlot from existing instance but with geometry replaced.
+	 */
+	public SamplePlot(SamplePlot plot, Geometry newgeom, CoordinateReferenceSystem newcrs) {
+       this.geometry = newgeom;
+       this.CRS = newcrs;
+	   this.clusterNr = plot.clusterNr;
+	   this.plotNr = plot.plotNr;
+	   this.stratumName = plot.stratumName;
+	   this.weight = plot.weight;
+	}
+    
 
-	
 	// Getters 
 	public Geometry getGeometry() {
 		return geometry;
+	}
+
+	public CoordinateReferenceSystem getCRS() {
+		return CRS;
 	}
 
 	public int getClusterNr() {
@@ -83,10 +99,6 @@ public class SamplePlot {
 
 	public String getStratumName() {
 		return stratumName;
-	}
-
-	public CoordinateReferenceSystem getCRS() {
-		return CRS;
 	}
 
 	public double getWeight() {
